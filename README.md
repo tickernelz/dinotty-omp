@@ -52,6 +52,32 @@ With several tabs open, each potentially running a different profile against a d
 
 ## Install
 
+### From npm
+
+The published package ships the built bundle, so no toolchain is required.
+
+```sh
+npx @tickernelz/dinotty-omp install
+```
+
+That copies the plugin into the Dinotty plugins directory and prints the resolved path.
+Reload the Dinotty browser tab afterwards.
+
+| Command | Effect |
+| --- | --- |
+| `npx @tickernelz/dinotty-omp install` | Copy the plugin into the plugins directory |
+| `npx @tickernelz/dinotty-omp uninstall` | Remove the installed plugin |
+| `npx @tickernelz/dinotty-omp where` | Print the resolved install path |
+| `npx @tickernelz/dinotty-omp install --dir <path>` | Install into a custom directory |
+
+The target directory resolves from `--dir`, then `DINOTTY_PLUGINS_DIR`, then the home directory.
+Update by rerunning the install command against a newer version:
+
+```sh
+npx @tickernelz/dinotty-omp@latest install
+```
+
+
 ### From source
 
 ```sh

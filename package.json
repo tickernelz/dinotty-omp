@@ -1,5 +1,5 @@
 {
-  "name": "dinotty-omp",
+  "name": "@tickernelz/dinotty-omp",
   "version": "1.0.0",
   "description": "Dinotty plugin for the Oh My Pi coding agent: live session HUD, managed tmux launcher, visual session explorer and skill palette",
   "type": "module",
@@ -7,9 +7,9 @@
     "build": "vite build",
     "dev": "vite build --watch",
     "typecheck": "vue-tsc --noEmit",
-    "check:bridge": "node --check bin/omp-bridge",
-    "link": "node scripts/link-plugin.mjs",
-    "unlink": "node scripts/link-plugin.mjs --remove"
+    "check:bridge": "node --check bin/omp-bridge && node --check scripts/cli.mjs",
+    "link": "node scripts/cli.mjs link",
+    "unlink": "node scripts/cli.mjs unlink"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.5",
@@ -40,5 +40,20 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "pnpm@11.15.0"
+  "packageManager": "pnpm@11.15.0",
+  "bin": {
+    "dinotty-omp": "scripts/cli.mjs"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "scripts/cli.mjs",
+    "plugin.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
 }

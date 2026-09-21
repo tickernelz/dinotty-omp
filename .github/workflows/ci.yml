@@ -3,6 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -11,148 +17,83 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  NODE_OPTIONS: --no-warnings
+
 jobs:
-  build:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Check standalone scripts
+        run: pnpm check:bridge
+
+      - name: Build
+        run: pnpm build
+
+      - name: Verify manifest, artifacts and packaging
+        run: node .github/scripts/verify.mjs
+
+      - name: Verify committed dist matches a fresh build
+        run: |
+          git add --intent-to-add -- dist
+          if ! git diff --exit-code -- dist; then
+            echo "The committed dist/ bundle does not match a fresh build of src/."
+            echo "Run 'pnpm build' and commit the regenerated dist/ files."
+            exit 1
+          fi
+
+      - name: Verify the installer CLI
+        env:
+          DINOTTY_PLUGINS_DIR: ${{ runner.temp }}/dinotty-plugins
+        run: |
+          node scripts/cli.mjs install
+          node .github/scripts/verify.mjs --installed "$DINOTTY_PLUGINS_DIR/dinotty-omp"
+          node scripts/cli.mjs uninstall
+
+  cross-platform:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [macos-latest, windows-latest]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Typecheck
-        run: pnpm typecheck
+        run: pnpm install --frozen-lockfile --prefer-offline
 
       - name: Build
         run: pnpm build
 
-      - name: Verify bundle artifacts
+      - name: Verify artifacts and installer CLI
+        env:
+          DINOTTY_PLUGINS_DIR: ${{ runner.temp }}/dinotty-plugins
         run: |
-          node -e "const fs=require('node:fs');const required=['dist/main.js','dist/styles.css'];let failed=false;for(const file of required){if(!fs.existsSync(file)){console.error('Missing build artifact: '+file);failed=true;continue}const size=fs.statSync(file).size;if(size===0){console.error('Empty build artifact: '+file);failed=true;continue}console.log('Verified '+file+' ('+size+' bytes)')}if(failed){process.exit(1)}"
-
-      - name: Verify committed dist is up to date
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          git add --intent-to-add -- dist
-          if ! git diff --exit-code -- dist; then
-            echo "The committed dist/ bundle does not match a fresh build of src/."
-            echo "Run 'pnpm build' locally and commit the regenerated dist/ files."
-            exit 1
-          fi
-
-  bridge:
-    name: Bridge CLI
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-
-      - name: Syntax-check the bridge entry point
-        run: node --check bin/omp-bridge
-
-      - name: Verify the Windows bridge wrapper exists
-        run: |
-          node -e "const fs=require('node:fs');const file='bin/omp-bridge.cmd';if(!fs.existsSync(file)||fs.statSync(file).size===0){console.error('Missing or empty Windows bridge wrapper: '+file);process.exit(1)}console.log('Verified '+file)"
-
-      - name: Verify the bridge entry point is executable in git
-        run: |
-          mode=$(git ls-files --stage -- bin/omp-bridge | cut -d ' ' -f 1)
-          if [ "$mode" != "100755" ]; then
-            echo "bin/omp-bridge is recorded in git with mode '$mode', expected '100755'."
-            echo "Run 'git update-index --chmod=+x bin/omp-bridge' and commit the change."
-            exit 1
-          fi
-          echo "Verified bin/omp-bridge mode 100755"
-
-  manifest:
-    name: Manifest
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-      - name: Validate plugin manifest
-        run: |
-          node --input-type=commonjs <<'NODE'
-          const fs = require('node:fs');
-          const path = require('node:path');
-
-          const failures = [];
-          const readJson = (file) => {
-            try {
-              return JSON.parse(fs.readFileSync(file, 'utf8'));
-            } catch (error) {
-              failures.push(file + ' is not valid JSON: ' + error.message);
-              return null;
-            }
-          };
-
-          const manifest = readJson('plugin.json');
-          const pkg = readJson('package.json');
-
-          if (manifest && pkg) {
-            if (manifest.version !== pkg.version) {
-              failures.push(
-                'Version mismatch: plugin.json is ' + manifest.version +
-                ' but package.json is ' + pkg.version +
-                '. Keep both in sync before releasing.'
-              );
-            }
-            for (const field of ['entry', 'styles']) {
-              const value = manifest[field];
-              if (typeof value !== 'string' || value.length === 0) {
-                failures.push('plugin.json field "' + field + '" is missing or not a string.');
-                continue;
-              }
-              const target = path.resolve(process.cwd(), value);
-              if (!fs.existsSync(target) || fs.statSync(target).size === 0) {
-                failures.push('plugin.json field "' + field + '" points at ' + value + ' which is missing or empty after a build.');
-                continue;
-              }
-              console.log('Verified plugin.json ' + field + ' -> ' + value);
-            }
-          }
-
-          if (failures.length > 0) {
-            for (const failure of failures) {
-              console.error(failure);
-            }
-            process.exit(1);
-          }
-          console.log('Manifest validated');
-          NODE
+          node .github/scripts/verify.mjs --artifacts-only
+          node scripts/cli.mjs install
+          node .github/scripts/verify.mjs --installed "${{ runner.temp }}/dinotty-plugins/dinotty-omp"
+          node scripts/cli.mjs uninstall
