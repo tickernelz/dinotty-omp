@@ -67,7 +67,7 @@ jobs:
           echo "RELEASE_ASSET=dinotty-omp-${GITHUB_REF_NAME}.zip" >> "$GITHUB_ENV"
 
       - name: Publish the GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ${{ env.RELEASE_ASSET }}
           generate_release_notes: true
