@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -e
+
+action="${1:-active}"
+pane_id="${2:-}"
+
+resolve_by_pane() {
+  local target_pane="$1"
+  local pid=""
+  local tty=""
+  local session=""
+  local target_cwd=""
+
+  if [ -n "$target_pane" ] && [ -f "$HOME/.config/dinotty/session-ledger.json" ]; then
+    pid=$(jq -r --arg p "$target_pane" '.entries[]? | select(.pane_id == $p) | .pid' "$HOME/.config/dinotty/session-ledger.json" 2>/dev/null || true)
+  fi
+
+  if [ -n "$pid" ]; then
+    tty=$(ps -o tty= -p "$pid" 2>/dev/null | tr -d ' ' || true)
+    if [ -n "$tty" ]; then
+      session=$(tmux list-clients -F '#{client_tty} #{client_session}' 2>/dev/null | grep -E "/dev/$tty(\s|$)" | head -1 | awk '{print $2}' || true)
+      if [ -n "$session" ]; then
+        target_cwd=$(tmux list-panes -t "$session" -F '#{pane_current_path}' 2>/dev/null | head -1 || true)
+      fi
+    fi
+    if [ -z "$target_cwd" ] && [ -d "/proc/$pid" ]; then
+      target_cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null || true)
+      local child
+      child=$(pgrep -P "$pid" -f omp 2>/dev/null | head -1 || true)
+      if [ -n "$child" ] && [ -d "/proc/$child" ]; then
+        local child_cwd
+        child_cwd=$(readlink -f "/proc/$child/cwd" 2>/dev/null || true)
+        [ -n "$child_cwd" ] && target_cwd="$child_cwd"
+      fi
+    fi
+  fi
+
+  if [ -z "$target_cwd" ]; then
+    target_cwd=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null || true)
+  fi
+
+  local session_file=""
+  if [ -n "$target_cwd" ]; then
+    local rel="${target_cwd#$HOME}"
+    local slug="${rel//\//-}"
+    [ -z "$slug" ] && slug="-"
+    if [ -d "$HOME/.omp/agent/sessions/$slug" ]; then
+      session_file=$(find "$HOME/.omp/agent/sessions/$slug" -maxdepth 1 -name '*.jsonl' ! -name '__*' -type f -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | awk '{print $2}' || true)
+    fi
+  fi
+
+  if [ -z "$session_file" ]; then
+    session_file=$(find "$HOME/.omp/agent/sessions" -name '*.jsonl' ! -name '__*' ! -name '*advisor*' -type f -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | awk '{print $2}' || true)
+    if [ -n "$session_file" ] && [ -z "$target_cwd" ]; then
+      target_cwd=$(head -n 5 "$session_file" 2>/dev/null | grep '"type":"session"' | jq -r .cwd 2>/dev/null || true)
+    fi
+  fi
+
+  printf '{"cwd":"%s","sessionFile":"%s"}\n' "${target_cwd:-$HOME}" "${session_file:-}"
+}
+
+if [ "$action" = "pane" ] || [ "$action" = "active" ]; then
+  resolve_by_pane "$pane_id"
+  exit 0
+fi
+
+if [ "$action" = "tmux-panes" ]; then
+  tmux list-panes -a -F '{"session":"#{session_name}","active":"#{pane_active}","path":"#{pane_current_path}","cmd":"#{pane_current_command}"}' 2>/dev/null | jq -s . || echo '[]'
+  exit 0
+fi
+
+printf '{"error":"unknown action"}\n'
+exit 1

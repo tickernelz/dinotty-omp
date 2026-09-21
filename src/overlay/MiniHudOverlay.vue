@@ -1,16 +1,21 @@
 <template>
   <div class="omp-hud" :class="{ 'is-collapsed': isCollapsed, 'is-dragging': dragging }">
-    <div class="omp-hud-header" data-drag-handle>
-      <div class="omp-hud-title-group">
+    <div class="omp-hud-header">
+      <div class="omp-hud-title-group" data-drag-handle>
         <Icon name="bot" :size="15" class="omp-hud-bot-icon" />
         <span class="omp-hud-brand">OMP</span>
         <span class="omp-hud-status-beacon" :class="sessionState.status"></span>
+        <span v-if="isCollapsed" class="omp-hud-collapsed-summary">
+          {{ formatModel(sessionState.model) }} · {{ formatTokens(sessionState.totalTokens) }}
+        </span>
       </div>
-      <div class="omp-hud-controls">
+      <div class="omp-hud-controls" @pointerdown.stop @mousedown.stop>
         <button
           type="button"
           class="omp-hud-icon-btn"
           :title="isCollapsed ? 'Expand HUD' : 'Collapse HUD'"
+          @pointerdown.stop
+          @mousedown.stop
           @click.stop="isCollapsed = !isCollapsed"
         >
           <Icon :name="isCollapsed ? 'chevron-down' : 'chevron-up'" :size="13" />
@@ -78,9 +83,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
-import type { PluginContext } from '../types/dinotty';
+import type { PluginContext, Disposable } from '../types/dinotty';
 import Icon from '../components/Icon.vue';
-import { findSessionFiles, getSession } from '../services/sessionResolver';
+import { resolveActiveSessionInfo, getSession } from '../services/sessionResolver';
 import { toggleCopyMode, launchOmp } from '../services/tmuxLauncher';
 
 const props = defineProps<{
@@ -98,6 +103,7 @@ const sessionState = ref({
 });
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
+const disposables: Disposable[] = [];
 
 function formatModel(name: string): string {
   if (!name || name === 'unknown') return 'OMP Agent';
@@ -115,10 +121,9 @@ function formatTokens(count: number): string {
 
 async function updateState() {
   try {
-    const cwd = props.api.terminal.activeCwd() || '/home/zhafron/Projects';
-    const files = await findSessionFiles(props.api.workspace, cwd);
-    if (files.length > 0) {
-      const parsed = await getSession(props.api.workspace, files[0]);
+    const info = await resolveActiveSessionInfo(props.api);
+    if (info && info.sessionPath) {
+      const parsed = await getSession(props.api.workspace, info.sessionPath);
       if (parsed) {
         sessionState.value = {
           model: parsed.model,
@@ -147,10 +152,23 @@ function splitPane() {
 onMounted(() => {
   void updateState();
   refreshTimer = setInterval(updateState, 2000);
+
+  if (props.api.terminal.onDidChangeActivePane) {
+    disposables.push(
+      props.api.terminal.onDidChangeActivePane(() => {
+        void updateState();
+      })
+    );
+  }
 });
 
 onBeforeUnmount(() => {
   if (refreshTimer) clearInterval(refreshTimer);
+  for (const d of disposables) {
+    try {
+      d.dispose();
+    } catch {}
+  }
 });
 </script>
 
@@ -175,7 +193,13 @@ onBeforeUnmount(() => {
 }
 
 .omp-hud.is-collapsed {
-  width: 140px;
+  width: auto;
+  min-width: 170px;
+  max-width: 260px;
+}
+
+.omp-hud.is-collapsed .omp-hud-body {
+  display: none !important;
 }
 
 .omp-hud-header {
@@ -185,18 +209,32 @@ onBeforeUnmount(() => {
   padding: 6px 8px;
   background: color-mix(in srgb, var(--bg, #09090b) 60%, transparent);
   border-bottom: 1px solid var(--border, #27272a);
-  cursor: grab;
-  touch-action: none;
 }
 
-.omp-hud-header:active {
-  cursor: grabbing;
+.omp-hud.is-collapsed .omp-hud-header {
+  border-bottom: none;
 }
 
 .omp-hud-title-group {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 1;
+  cursor: grab;
+  touch-action: none;
+}
+
+.omp-hud-title-group:active {
+  cursor: grabbing;
+}
+
+.omp-hud-collapsed-summary {
+  font-size: 10px;
+  color: var(--fg-muted, #a1a1aa);
+  margin-left: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .omp-hud-bot-icon {
@@ -254,6 +292,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 4px;
+  pointer-events: auto;
 }
 
 .omp-hud-icon-btn {
@@ -261,16 +300,17 @@ onBeforeUnmount(() => {
   border: none;
   color: var(--fg-muted, #71717a);
   cursor: pointer;
-  padding: 2px;
+  padding: 3px;
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: auto;
 }
 
 .omp-hud-icon-btn:hover {
   color: var(--fg, #fafafa);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .omp-hud-body {

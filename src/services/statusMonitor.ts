@@ -1,5 +1,5 @@
 import type { MonitorSeries, MonitorSeriesDetailRow, PluginContext } from '../types/dinotty';
-import { findSessionFiles, getSession } from './sessionResolver';
+import { resolveActiveSessionInfo, getSession } from './sessionResolver';
 
 export function createOmpMonitorSeries(ctx: PluginContext): MonitorSeries {
   let activeModel = 'gemini-3.8-flash';
@@ -12,10 +12,10 @@ export function createOmpMonitorSeries(ctx: PluginContext): MonitorSeries {
 
   async function poll() {
     try {
-      activeCwd = ctx.terminal.activeCwd() || '/home/zhafron/Projects';
-      const files = await findSessionFiles(ctx.workspace, activeCwd);
-      if (files.length > 0) {
-        const parsed = await getSession(ctx.workspace, files[0]);
+      const info = await resolveActiveSessionInfo(ctx);
+      if (info && info.sessionPath) {
+        activeCwd = info.cwd;
+        const parsed = await getSession(ctx.workspace, info.sessionPath);
         if (parsed) {
           activeModel = parsed.model;
           activeProvider = parsed.provider;
@@ -31,6 +31,12 @@ export function createOmpMonitorSeries(ctx: PluginContext): MonitorSeries {
   void poll();
   setInterval(poll, 2500);
 
+  if (ctx.terminal.onDidChangeActivePane) {
+    ctx.terminal.onDidChangeActivePane(() => {
+      void poll();
+    });
+  }
+
   return {
     id: 'dinotty-omp:session-monitor',
     label: 'OMP Agent Status',
@@ -41,8 +47,8 @@ export function createOmpMonitorSeries(ctx: PluginContext): MonitorSeries {
     },
     statusText: () => {
       const shortModel = activeModel.split('/').pop() || 'omp';
-      const cleanModel = shortModel.length > 12 ? shortModel.slice(0, 11) + '..' : shortModel;
-      const formattedCost = totalCost > 0 ? `$${totalCost.toFixed(3)}` : '$0.00';
+      const cleanModel = shortModel.length > 14 ? shortModel.slice(0, 13) + '..' : shortModel;
+      const formattedCost = totalCost > 0 ? `$${totalCost.toFixed(2)}` : '$0.00';
       return `OMP: ${cleanModel} · ${formattedCost}`;
     },
     detail: (): MonitorSeriesDetailRow[] => {

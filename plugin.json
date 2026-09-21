@@ -10,7 +10,8 @@
   "showInToolbar": true,
   "permissions": [
     "workspace.read",
-    "workspace.write"
+    "workspace.write",
+    "native.execute"
   ],
   "commands": [
     {
@@ -33,5 +34,9 @@
       "id": "omp.tmux-copymode",
       "title": "OMP: Toggle Tmux Copy-Mode"
     }
-  ]
+  ],
+  "bin": {
+    "mode": "cli",
+    "entry": "./bin/omp-bridge"
+  }
 }

@@ -67,6 +67,35 @@ export function encodeCwdToSessionDir(cwd: string): string {
   return rel.replace(/\//g, '-');
 }
 
+export async function resolveActiveSessionInfo(
+  ctx: PluginContext
+): Promise<{ cwd: string; sessionPath: string } | null> {
+  const activePaneId = ctx.terminal.activePaneId() || '';
+  try {
+    const res = await ctx.exec.run(['pane', activePaneId]);
+    if (res.code === 0 && res.stdout.trim()) {
+      const parsed = JSON.parse(res.stdout.trim());
+      if (parsed && parsed.sessionFile) {
+        return {
+          cwd: parsed.cwd || ctx.terminal.activeCwd() || '/home/zhafron',
+          sessionPath: parsed.sessionFile
+        };
+      }
+    }
+  } catch {}
+
+  const activeCwd = ctx.terminal.activeCwd() || '/home/zhafron';
+  const files = await findSessionFiles(ctx.workspace, activeCwd);
+  if (files.length > 0) {
+    return {
+      cwd: activeCwd,
+      sessionPath: files[0]
+    };
+  }
+
+  return null;
+}
+
 export async function findSessionFiles(
   workspace: PluginContext['workspace'],
   cwd: string
@@ -78,7 +107,7 @@ export async function findSessionFiles(
   try {
     const list = await workspace.readDir(targetDir);
     const jsonlFiles = list.entries
-      .filter((e) => !e.is_dir && e.name.endsWith('.jsonl'))
+      .filter((e) => !e.is_dir && e.name.endsWith('.jsonl') && !e.name.startsWith('__'))
       .sort((a, b) => b.name.localeCompare(a.name))
       .map((e) => `${targetDir}/${e.name}`);
     if (jsonlFiles.length > 0) {
@@ -92,20 +121,26 @@ export async function findSessionFiles(
       .filter((e) => e.is_dir && e.name.startsWith('-'))
       .map((e) => `${homeSessions}/${e.name}`);
 
-    const allFiles: Array<{ path: string; name: string }> = [];
-    for (const sub of subdirs.slice(0, 10)) {
+    const allFiles: Array<{ path: string; name: string; mtime: number }> = [];
+    for (const sub of subdirs) {
       try {
         const subList = await workspace.readDir(sub);
         for (const e of subList.entries) {
-          if (!e.is_dir && e.name.endsWith('.jsonl')) {
-            allFiles.push({ path: `${sub}/${e.name}`, name: e.name });
+          if (!e.is_dir && e.name.endsWith('.jsonl') && !e.name.startsWith('__')) {
+            const filePath = `${sub}/${e.name}`;
+            let mtime = 0;
+            try {
+              const st = await workspace.stat(filePath);
+              mtime = st.modified || 0;
+            } catch {}
+            allFiles.push({ path: filePath, name: e.name, mtime });
           }
         }
       } catch {}
     }
 
-    allFiles.sort((a, b) => b.name.localeCompare(a.name));
-    return allFiles.slice(0, 30).map((f) => f.path);
+    allFiles.sort((a, b) => b.mtime - a.mtime);
+    return allFiles.slice(0, 50).map((f) => f.path);
   } catch {
     return [];
   }
@@ -159,6 +194,9 @@ export function parseSessionContent(rawContent: string, filePath: string): Parse
         const msg = obj.message || {};
         const role = msg.role;
         const msgUsage = msg.usage;
+        if (msg.model) activeModel = String(msg.model);
+        if (msg.provider) activeProvider = String(msg.provider);
+
         if (msgUsage) {
           if (typeof msgUsage.totalTokens === 'number') totalTokens = msgUsage.totalTokens;
           if (msgUsage.cost && typeof msgUsage.cost.total === 'number') {
@@ -298,7 +336,7 @@ export async function getSession(
 
     const parsed = parseSessionContent(file.content, filePath);
     sessionCache.set(filePath, { mtime, data: parsed });
-    if (sessionCache.size > 20) {
+    if (sessionCache.size > 25) {
       const oldest = sessionCache.keys().next().value;
       if (oldest) sessionCache.delete(oldest);
     }
