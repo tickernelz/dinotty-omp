@@ -19,14 +19,14 @@
     "vue-tsc": "^2.2.0"
   },
   "license": "MIT",
-  "author": "zhafron",
-  "homepage": "https://github.com/zhafron/dinotty-omp",
+  "author": "tickernelz",
+  "homepage": "https://github.com/tickernelz/dinotty-omp",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zhafron/dinotty-omp.git"
+    "url": "https://github.com/tickernelz/dinotty-omp.git"
   },
   "bugs": {
-    "url": "https://github.com/zhafron/dinotty-omp/issues"
+    "url": "https://github.com/tickernelz/dinotty-omp/issues"
   },
   "keywords": [
     "dinotty",

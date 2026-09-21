@@ -2,7 +2,7 @@
 
 A Dinotty plugin that makes the Oh My Pi (`omp`) coding agent a first-class citizen of the Dinotty terminal: a live per-tab HUD, a managed tmux launcher, a visual session and trace explorer, a skill matrix, and a profile switcher.
 
-![CI](https://github.com/zhafron/dinotty-omp/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/tickernelz/dinotty-omp/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey)
 
@@ -55,7 +55,7 @@ With several tabs open, each potentially running a different profile against a d
 ### From source
 
 ```sh
-git clone https://github.com/zhafron/dinotty-omp.git
+git clone https://github.com/tickernelz/dinotty-omp.git
 cd dinotty-omp
 pnpm install
 pnpm build

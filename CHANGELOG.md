@@ -24,4 +24,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Host detection through the bridge `doctor` action, cached for the session, so platform, OMP agent directory and tmux availability come from the host instead of browser sniffing, and every path is built from absolute directories rather than a tilde string.
 - `pnpm run link` and `pnpm run unlink`: a cross-platform installer that links the checkout into the Dinotty plugin directory, refuses to clobber a real directory, and requires a built `dist/` first.
 
-[1.0.0]: https://github.com/zhafron/dinotty-omp/releases/tag/v1.0.0
+[1.0.0]: https://github.com/tickernelz/dinotty-omp/releases/tag/v1.0.0

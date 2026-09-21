@@ -5,7 +5,7 @@ Thanks for taking the time. This is a small plugin with a few hard rules; read t
 ## Setup
 
 ```sh
-git clone https://github.com/zhafron/dinotty-omp.git
+git clone https://github.com/tickernelz/dinotty-omp.git
 cd dinotty-omp
 pnpm install
 pnpm build
