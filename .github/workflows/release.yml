@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Package and publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify tag matches manifest version
+        run: |
+          node -e "const tag=process.env.GITHUB_REF_NAME.replace(/^v/,'');const plugin=require('./plugin.json');const pkg=require('./package.json');if(plugin.version!==tag||pkg.version!==tag){console.error('Tag '+tag+' does not match plugin.json '+plugin.version+' and package.json '+pkg.version);process.exit(1)}console.log('Version parity verified for '+tag)"
+
+      - name: Build
+        run: pnpm build
+
+      - name: Verify bundle artifacts
+        run: |
+          node -e "const fs=require('node:fs');const required=['dist/main.js','dist/styles.css'];let failed=false;for(const file of required){if(!fs.existsSync(file)){console.error('Missing build artifact: '+file);failed=true;continue}const size=fs.statSync(file).size;if(size===0){console.error('Empty build artifact: '+file);failed=true;continue}console.log('Verified '+file+' ('+size+' bytes)')}if(failed){process.exit(1)}"
+
+      - name: Package the plugin folder
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          stage="$(mktemp -d)/dinotty-omp"
+          mkdir -p "$stage"
+          cp plugin.json README.md LICENSE "$stage/"
+          cp -R dist "$stage/dist"
+          cp -R bin "$stage/bin"
+          asset="$PWD/dinotty-omp-${tag}.zip"
+          (cd "$(dirname "$stage")" && zip -r -q "$asset" dinotty-omp)
+          unzip -l "$asset"
+          echo "RELEASE_ASSET=dinotty-omp-${tag}.zip" >> "$GITHUB_ENV"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.RELEASE_ASSET }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true

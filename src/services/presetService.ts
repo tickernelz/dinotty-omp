@@ -1,45 +1,49 @@
 import type { PluginContext, QuickPickItem } from '../types/dinotty';
+import { getHostInfo, joinHostPath } from './hostInfo';
 import { launchOmp } from './tmuxLauncher';
+
+export const DEFAULT_PRESET_ID = 'default';
 
 export interface PresetItem {
   id: string;
-  name: string;
+  label: string;
+  fileName: string;
   configPath: string;
   isDefault: boolean;
-  modelRoleSummary?: string;
 }
 
-export async function discoverPresets(workspace: PluginContext['workspace']): Promise<PresetItem[]> {
+export async function discoverPresets(ctx: PluginContext): Promise<PresetItem[]> {
+  const host = await getHostInfo(ctx);
+  const agentDir = host?.ompHome || '~/.omp/agent';
+
   const presets: PresetItem[] = [
     {
-      id: 'default',
-      name: 'Default Config (config.yml)',
-      configPath: '~/.omp/agent/config.yml',
-      isDefault: true,
-      modelRoleSummary: 'Standard model roles'
+      id: DEFAULT_PRESET_ID,
+      label: 'Default profile',
+      fileName: 'config.yml',
+      configPath: joinHostPath(agentDir, 'config.yml'),
+      isDefault: true
     }
   ];
 
   try {
-    const list = await workspace.readDir('~/.omp/agent');
-    for (const entry of list.entries) {
+    const listing = await ctx.workspace.readDir(agentDir);
+    for (const entry of listing.entries) {
       if (entry.is_dir) continue;
       const match = entry.name.match(/^config\.(.+)\.ya?ml$/);
-      if (match) {
-        const id = match[1];
-        presets.push({
-          id,
-          name: `Profile: ${id}`,
-          configPath: `~/.omp/agent/${entry.name}`,
-          isDefault: false
-        });
-      }
+      if (!match) continue;
+      presets.push({
+        id: match[1],
+        label: match[1],
+        fileName: entry.name,
+        configPath: joinHostPath(agentDir, entry.name),
+        isDefault: false
+      });
     }
   } catch {}
 
   presets.sort((a, b) => {
-    if (a.isDefault) return -1;
-    if (b.isDefault) return 1;
+    if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
     return a.id.localeCompare(b.id);
   });
 
@@ -49,14 +53,14 @@ export async function discoverPresets(workspace: PluginContext['workspace']): Pr
 export function buildPresetQuickPickItems(
   ctx: PluginContext,
   presets: PresetItem[],
-  target: 'new-tab' | 'split-h' | 'split-v' = 'new-tab'
+  target: 'new-tab' | 'split-h' | 'split-v'
 ): QuickPickItem[] {
-  return presets.map((p) => ({
-    label: p.isDefault ? 'Default OMP Session' : p.id,
-    detail: p.configPath,
+  return presets.map((preset) => ({
+    label: preset.isDefault ? 'Default profile' : preset.id,
+    detail: preset.configPath,
     icon: 'zap',
     action: () => {
-      void launchOmp(ctx, { preset: p.id, target });
+      void launchOmp(ctx, { preset, target });
     }
   }));
 }

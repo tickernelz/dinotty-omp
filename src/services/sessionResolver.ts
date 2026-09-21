@@ -1,17 +1,24 @@
 import type { PluginContext } from '../types/dinotty';
 
-export interface TokenUsage {
-  input: number;
-  output: number;
-  cacheRead: number;
-  total: number;
+export type AgentStatus = 'idle' | 'thinking' | 'running_tool' | 'error';
+export type PaneState = 'inactive' | 'starting' | 'running';
+
+export interface SessionMetrics {
+  model: string;
+  provider: string;
+  thinkingLevel: string;
+  totalTokens: number;
+  totalCost: number;
+  turns: number;
+  status: AgentStatus;
 }
 
-export interface SessionCost {
-  input: number;
-  output: number;
-  cacheRead: number;
-  total: number;
+export interface PaneSession {
+  cwd: string;
+  sessionFile: string;
+  isRunning: boolean;
+  state: PaneState;
+  summary: SessionMetrics | null;
 }
 
 export interface ToolCallItem {
@@ -21,330 +28,305 @@ export interface ToolCallItem {
   intent?: string;
   result?: string;
   isError?: boolean;
-  durationMs?: number;
 }
 
 export interface TurnMessageItem {
   id: string;
-  role: 'user' | 'assistant' | 'toolResult' | 'system';
+  role: 'user' | 'assistant' | 'toolResult';
   text: string;
   images: string[];
   timestamp: number;
-  usage?: TokenUsage;
   cost?: number;
-  durationMs?: number;
+  totalTokens?: number;
   thinking?: string;
-  thinkingLevel?: string;
   toolCalls?: ToolCallItem[];
 }
 
-export interface SessionSummary {
+export interface ParsedSession {
   filePath: string;
   sessionId: string;
   cwd: string;
-  updatedAt: number;
   model: string;
   provider: string;
-  thinkingLevel: string;
   totalTokens: number;
   totalCost: number;
-  turnCount: number;
-  status: 'idle' | 'thinking' | 'running_tool' | 'error';
-  lastActivityTime: number;
-}
-
-export interface ParsedSession extends SessionSummary {
+  updatedAt: number;
+  truncated: boolean;
   messages: TurnMessageItem[];
 }
 
-export interface ActiveSessionResult {
-  cwd: string;
-  sessionPath: string;
-  summary?: {
-    model: string;
-    provider: string;
-    thinkingLevel: string;
-    totalTokens: number;
-    totalCost: number;
-    status: 'idle' | 'thinking' | 'running_tool' | 'error';
-  } | null;
-}
+const EMPTY_PANE: PaneSession = {
+  cwd: '',
+  sessionFile: '',
+  isRunning: false,
+  state: 'inactive',
+  summary: null
+};
 
-const sessionCache = new Map<string, { mtime: number; data: ParsedSession }>();
+const sessionCache = new Map<string, { mtime: number; size: number; data: ParsedSession }>();
+const SESSION_CACHE_LIMIT = 12;
 
-export function encodeCwdToSessionDir(cwd: string): string {
-  if (!cwd) return '-';
-  const clean = cwd.replace(/\\/g, '/').replace(/\/+$/, '');
-  const rel = clean
-    .replace(/^(\/home\/[^/]+|\/Users\/[^/]+|[A-Za-z]:\/Users\/[^/]+|[A-Za-z]:)/i, '')
-    .replace(/^\/+/, '');
-  if (!rel) return '-';
-  return '-' + rel.replace(/[^a-zA-Z0-9_-]/g, '-');
-}
-
-export async function resolveActiveSessionInfo(
-  ctx: PluginContext
-): Promise<ActiveSessionResult | null> {
-  const activePaneId = ctx.terminal.activePaneId() || '';
-  try {
-    const res = await ctx.exec.run(['pane', activePaneId]);
-    if (res.code === 0 && res.stdout.trim()) {
-      const parsed = JSON.parse(res.stdout.trim());
-      if (!parsed.isRunning || !parsed.sessionFile) {
-        return null;
-      }
-      return {
-        cwd: parsed.cwd || '',
-        sessionPath: parsed.sessionFile,
-        summary: parsed.summary || null
-      };
-    }
-  } catch {}
-
-  return null;
-}
-
-export async function findSessionFiles(
-  workspace: PluginContext['workspace'],
-  cwd: string
-): Promise<string[]> {
-  const dirName = encodeCwdToSessionDir(cwd);
-  const homeSessions = '~/.omp/agent/sessions';
-  const targetDir = `${homeSessions}/${dirName}`;
+export async function readPaneSession(ctx: PluginContext): Promise<PaneSession> {
+  const paneId = ctx.terminal.activePaneId() || '';
+  const cwdHint = ctx.terminal.activeCwd() || '';
 
   try {
-    const list = await workspace.readDir(targetDir);
-    const jsonlFiles = list.entries
-      .filter((e) => !e.is_dir && e.name.endsWith('.jsonl') && !e.name.startsWith('__'))
-      .sort((a, b) => b.name.localeCompare(a.name))
-      .map((e) => `${targetDir}/${e.name}`);
-    if (jsonlFiles.length > 0) {
-      return jsonlFiles;
-    }
-  } catch {}
-
-  try {
-    const rootList = await workspace.readDir(homeSessions);
-    const subdirs = rootList.entries
-      .filter((e) => e.is_dir && e.name.startsWith('-'))
-      .map((e) => `${homeSessions}/${e.name}`);
-
-    const allFiles: Array<{ path: string; name: string; mtime: number }> = [];
-    for (const sub of subdirs) {
-      try {
-        const subList = await workspace.readDir(sub);
-        for (const e of subList.entries) {
-          if (!e.is_dir && e.name.endsWith('.jsonl') && !e.name.startsWith('__')) {
-            const filePath = `${sub}/${e.name}`;
-            let mtime = 0;
-            try {
-              const st = await workspace.stat(filePath);
-              mtime = st.modified || 0;
-            } catch {}
-            allFiles.push({ path: filePath, name: e.name, mtime });
-          }
-        }
-      } catch {}
-    }
-
-    allFiles.sort((a, b) => b.mtime - a.mtime);
-    return allFiles.slice(0, 50).map((f) => f.path);
+    const result = await ctx.exec.run(['pane', paneId, cwdHint]);
+    if (result.code !== 0 || !result.stdout.trim()) return EMPTY_PANE;
+    const parsed = JSON.parse(result.stdout.trim()) as Partial<PaneSession>;
+    return {
+      cwd: parsed.cwd || '',
+      sessionFile: parsed.sessionFile || '',
+      isRunning: Boolean(parsed.isRunning),
+      state: parsed.state || (parsed.isRunning ? 'running' : 'inactive'),
+      summary: parsed.summary || null
+    };
   } catch {
-    return [];
+    return EMPTY_PANE;
   }
 }
 
-export function parseSessionContent(rawContent: string, filePath: string): ParsedSession {
-  const lines = rawContent.split('\n');
-  let sessionId = '';
-  let cwd = '';
-  let activeModel = 'unknown';
-  let activeProvider = 'unknown';
-  let activeThinkingLevel = 'auto';
-  let totalCost = 0;
-  let totalTokens = 0;
-  let status: SessionSummary['status'] = 'idle';
-  let lastTimestamp = Date.now();
+export function sessionDisplayName(filePath: string): string {
+  const base = filePath.replace(/\\/g, '/').split('/').pop() || filePath;
+  const match = base.match(/^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})/);
+  if (!match) return base.replace(/\.jsonl$/, '');
+  return `${match[1]} ${match[2]}:${match[3]}:${match[4]}`;
+}
 
-  const messages: TurnMessageItem[] = [];
-  const pendingToolCalls = new Map<string, ToolCallItem>();
+export function workspaceLabel(filePath: string): string {
+  const parts = filePath.replace(/\\/g, '/').split('/');
+  const slug = parts[parts.length - 2] || '';
+  if (!slug) return 'workspace';
+  return slug.replace(/^-/, '').replace(/-/g, '/') || 'home';
+}
 
-  for (const line of lines) {
-    if (!line.trim()) continue;
+export async function listSessionFiles(
+  ctx: PluginContext,
+  sessionsRoot: string,
+  workspaceSlug?: string
+): Promise<Array<{ path: string; name: string; modified: number }>> {
+  const separator = sessionsRoot.includes('\\') ? '\\' : '/';
+  const directories: string[] = [];
+
+  if (workspaceSlug) {
+    directories.push([sessionsRoot, workspaceSlug].join(separator));
+  } else {
     try {
-      const obj = JSON.parse(line);
-      if (obj.timestamp) {
-        const parsedTime = typeof obj.timestamp === 'number' ? obj.timestamp : Date.parse(obj.timestamp);
-        if (!Number.isNaN(parsedTime)) lastTimestamp = parsedTime;
+      const rootListing = await ctx.workspace.readDir(sessionsRoot);
+      for (const entry of rootListing.entries) {
+        if (entry.is_dir && entry.name.startsWith('-')) {
+          directories.push([sessionsRoot, entry.name].join(separator));
+        }
       }
+    } catch {
+      return [];
+    }
+  }
 
-      if (obj.type === 'session') {
-        sessionId = obj.id || sessionId;
-        cwd = obj.cwd || cwd;
-      } else if (obj.type === 'model_change') {
-        if (obj.model) activeModel = String(obj.model);
-        if (obj.provider) activeProvider = String(obj.provider);
-        if (obj.thinkingLevel) activeThinkingLevel = String(obj.thinkingLevel);
-      } else if (obj.type === 'thinking_level_change') {
-        if (obj.thinkingLevel) activeThinkingLevel = String(obj.thinkingLevel);
-      } else if (obj.type === 'custom' && obj.customType === 'tool_execution_start') {
-        status = 'running_tool';
-        const data = obj.data || {};
-        if (data.toolCallId) {
-          pendingToolCalls.set(data.toolCallId, {
-            id: data.toolCallId,
-            name: data.toolName || 'tool',
-            arguments: {},
-            intent: data.intent
-          });
-        }
-      } else if (obj.type === 'message') {
-        const msg = obj.message || {};
-        const role = msg.role;
-        const msgUsage = msg.usage;
-        if (msg.model) activeModel = String(msg.model);
-        if (msg.provider) activeProvider = String(msg.provider);
-
-        if (msgUsage) {
-          if (typeof msgUsage.totalTokens === 'number') totalTokens = msgUsage.totalTokens;
-          if (msgUsage.cost && typeof msgUsage.cost.total === 'number') {
-            totalCost += msgUsage.cost.total;
-          }
-        }
-
-        if (role === 'assistant') {
-          let text = '';
-          let thinking = '';
-          const calls: ToolCallItem[] = [];
-
-          if (Array.isArray(msg.content)) {
-            for (const part of msg.content) {
-              if (part.type === 'text') {
-                text += (part.text || '') + '\n';
-              } else if (part.type === 'thinking') {
-                thinking += (part.text || part.thinking || '') + '\n';
-              } else if (part.type === 'toolCall') {
-                const callItem: ToolCallItem = {
-                  id: part.id || `call_${Math.random().toString(36).slice(2, 8)}`,
-                  name: part.name || 'tool',
-                  arguments: part.arguments || {},
-                  intent: part.intent
-                };
-                calls.push(callItem);
-                pendingToolCalls.set(callItem.id, callItem);
-                status = 'running_tool';
-              }
-            }
-          }
-
-          if (calls.length === 0) {
-            status = 'idle';
-          }
-
-          messages.push({
-            id: obj.id || `msg_${messages.length}`,
-            role: 'assistant',
-            text: text.trim(),
-            images: [],
-            timestamp: msg.timestamp || lastTimestamp,
-            usage: msgUsage,
-            cost: msgUsage?.cost?.total,
-            durationMs: msg.duration,
-            thinking: thinking.trim() || undefined,
-            thinkingLevel: activeThinkingLevel,
-            toolCalls: calls.length > 0 ? calls : undefined
-          });
-        } else if (role === 'user') {
-          let text = '';
-          const images: string[] = [];
-          if (Array.isArray(msg.content)) {
-            for (const part of msg.content) {
-              if (part.type === 'text') {
-                text += (part.text || '') + '\n';
-              } else if (part.type === 'image') {
-                if (part.url) images.push(part.url);
-                else if (part.data) images.push(`data:${part.mediaType || 'image/png'};base64,${part.data}`);
-              }
-            }
-          } else if (typeof msg.content === 'string') {
-            text = msg.content;
-          }
-
-          status = 'thinking';
-          messages.push({
-            id: obj.id || `msg_${messages.length}`,
-            role: 'user',
-            text: text.trim(),
-            images,
-            timestamp: msg.timestamp || lastTimestamp
-          });
-        } else if (role === 'toolResult') {
-          const toolCallId = msg.toolCallId;
-          let resultText = '';
-          if (Array.isArray(msg.content)) {
-            for (const part of msg.content) {
-              if (part.type === 'text') resultText += (part.text || '') + '\n';
-            }
-          } else if (typeof msg.content === 'string') {
-            resultText = msg.content;
-          }
-
-          if (toolCallId && pendingToolCalls.has(toolCallId)) {
-            const item = pendingToolCalls.get(toolCallId)!;
-            item.result = resultText.trim();
-            item.isError = Boolean(msg.isError);
-          }
-
-          messages.push({
-            id: obj.id || `msg_${messages.length}`,
-            role: 'toolResult',
-            text: resultText.trim(),
-            images: [],
-            timestamp: msg.timestamp || lastTimestamp
-          });
-          status = 'idle';
-        }
-      } else if (obj.type === 'custom' && obj.customType === 'session_exit') {
-        status = 'idle';
+  const files: Array<{ path: string; name: string; modified: number }> = [];
+  for (const directory of directories) {
+    try {
+      const listing = await ctx.workspace.readDir(directory);
+      for (const entry of listing.entries) {
+        if (entry.is_dir) continue;
+        if (!entry.name.endsWith('.jsonl')) continue;
+        if (entry.name.startsWith('__')) continue;
+        if (!/^\d{4}-\d{2}-\d{2}T/.test(entry.name)) continue;
+        const full = [directory, entry.name].join(separator);
+        let modified = 0;
+        try {
+          modified = (await ctx.workspace.stat(full)).modified || 0;
+        } catch {}
+        files.push({ path: full, name: entry.name, modified });
       }
     } catch {}
+  }
+
+  files.sort((a, b) => b.modified - a.modified || b.name.localeCompare(a.name));
+  return files;
+}
+
+export function parseSessionContent(
+  raw: string,
+  filePath: string,
+  truncated: boolean
+): ParsedSession {
+  const messages: TurnMessageItem[] = [];
+  const pending = new Map<string, ToolCallItem>();
+
+  let sessionId = '';
+  let cwd = '';
+  let model = 'unknown';
+  let provider = 'unknown';
+  let totalTokens = 0;
+  let totalCost = 0;
+  let updatedAt = 0;
+
+  for (const line of raw.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    let record: any;
+    try {
+      record = JSON.parse(trimmed);
+    } catch {
+      continue;
+    }
+
+    const stamp =
+      typeof record.timestamp === 'number' ? record.timestamp : Date.parse(record.timestamp || '');
+    if (!Number.isNaN(stamp) && stamp) updatedAt = stamp;
+
+    if (record.type === 'session') {
+      sessionId = record.id || sessionId;
+      cwd = record.cwd || cwd;
+      continue;
+    }
+
+    if (record.type === 'model_change') {
+      if (record.model) model = String(record.model);
+      if (record.provider) provider = String(record.provider);
+      continue;
+    }
+
+    if (record.type === 'custom' && record.customType === 'tool_execution_start') {
+      const id = record.data?.toolCallId;
+      if (id && !pending.has(id)) {
+        pending.set(id, { id, name: record.data?.toolName || 'tool', arguments: {}, intent: record.data?.intent });
+      }
+      continue;
+    }
+
+    if (record.type !== 'message') continue;
+
+    const message = record.message || {};
+    if (message.model) model = String(message.model);
+    if (message.provider) provider = String(message.provider);
+    if (typeof message.usage?.totalTokens === 'number') totalTokens = message.usage.totalTokens;
+    if (typeof message.usage?.cost?.total === 'number') totalCost += message.usage.cost.total;
+
+    const timestamp = message.timestamp || updatedAt || Date.now();
+
+    if (message.role === 'assistant') {
+      let text = '';
+      let thinking = '';
+      const calls: ToolCallItem[] = [];
+
+      if (Array.isArray(message.content)) {
+        for (const part of message.content) {
+          if (part?.type === 'text') text += `${part.text || ''}\n`;
+          else if (part?.type === 'thinking') thinking += `${part.thinking || part.text || ''}\n`;
+          else if (part?.type === 'toolCall') {
+            const call: ToolCallItem = {
+              id: part.id || `call-${messages.length}-${calls.length}`,
+              name: part.name || 'tool',
+              arguments: part.arguments ?? {},
+              intent: part.intent
+            };
+            calls.push(call);
+            pending.set(call.id, call);
+          }
+        }
+      }
+
+      messages.push({
+        id: record.id || `msg-${messages.length}`,
+        role: 'assistant',
+        text: text.trim(),
+        images: [],
+        timestamp,
+        cost: message.usage?.cost?.total,
+        totalTokens: message.usage?.totalTokens,
+        thinking: thinking.trim() || undefined,
+        toolCalls: calls.length ? calls : undefined
+      });
+      continue;
+    }
+
+    if (message.role === 'user') {
+      let text = '';
+      const images: string[] = [];
+      if (Array.isArray(message.content)) {
+        for (const part of message.content) {
+          if (part?.type === 'text') text += `${part.text || ''}\n`;
+          else if (part?.type === 'image') {
+            if (part.url) images.push(part.url);
+            else if (part.data) images.push(`data:${part.mediaType || 'image/png'};base64,${part.data}`);
+          }
+        }
+      } else if (typeof message.content === 'string') {
+        text = message.content;
+      }
+
+      messages.push({
+        id: record.id || `msg-${messages.length}`,
+        role: 'user',
+        text: text.trim(),
+        images,
+        timestamp
+      });
+      continue;
+    }
+
+    if (message.role === 'toolResult') {
+      let text = '';
+      if (Array.isArray(message.content)) {
+        for (const part of message.content) {
+          if (part?.type === 'text') text += `${part.text || ''}\n`;
+        }
+      } else if (typeof message.content === 'string') {
+        text = message.content;
+      }
+
+      const call = message.toolCallId ? pending.get(message.toolCallId) : undefined;
+      if (call) {
+        call.result = text.trim();
+        call.isError = Boolean(message.isError);
+        pending.delete(message.toolCallId);
+      } else {
+        messages.push({
+          id: record.id || `msg-${messages.length}`,
+          role: 'toolResult',
+          text: text.trim(),
+          images: [],
+          timestamp
+        });
+      }
+    }
   }
 
   return {
     filePath,
     sessionId,
     cwd,
-    updatedAt: lastTimestamp,
-    model: activeModel,
-    provider: activeProvider,
-    thinkingLevel: activeThinkingLevel,
+    model,
+    provider,
     totalTokens,
     totalCost,
-    turnCount: messages.length,
-    status,
-    lastActivityTime: lastTimestamp,
+    updatedAt,
+    truncated,
     messages
   };
 }
 
-export async function getSession(
-  workspace: PluginContext['workspace'],
+export async function loadSession(
+  ctx: PluginContext,
   filePath: string
 ): Promise<ParsedSession | null> {
   try {
-    const stat = await workspace.stat(filePath);
-    const mtime = stat.modified || 0;
+    const stat = await ctx.workspace.stat(filePath);
     const cached = sessionCache.get(filePath);
-    if (cached && cached.mtime === mtime) {
+    if (cached && cached.mtime === (stat.modified || 0) && cached.size === stat.size) {
       return cached.data;
     }
 
-    const file = await workspace.readFile(filePath);
+    const file = await ctx.workspace.readFile(filePath);
     if (!file.content) return null;
 
-    const parsed = parseSessionContent(file.content, filePath);
-    sessionCache.set(filePath, { mtime, data: parsed });
-    if (sessionCache.size > 25) {
+    const parsed = parseSessionContent(file.content, filePath, Boolean(file.truncated));
+    sessionCache.set(filePath, { mtime: stat.modified || 0, size: stat.size, data: parsed });
+
+    if (sessionCache.size > SESSION_CACHE_LIMIT) {
       const oldest = sessionCache.keys().next().value;
       if (oldest) sessionCache.delete(oldest);
     }
@@ -352,4 +334,8 @@ export async function getSession(
   } catch {
     return null;
   }
+}
+
+export function clearSessionCache(): void {
+  sessionCache.clear();
 }

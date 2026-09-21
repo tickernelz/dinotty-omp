@@ -2,7 +2,9 @@
   "id": "dinotty-omp",
   "name": "OMP Pilot",
   "version": "1.0.0",
-  "description": "Superpowers suite for Oh My Pi: Live Terminal HUD, Managed Tmux Launcher, Visual Session & Trace Explorer, and Skill Palette",
+  "minAppVersion": "0.19.0",
+  "description": "Live session HUD, managed tmux launcher, session explorer and skill palette for the Oh My Pi coding agent",
+  "description_zh": "Oh My Pi 编码代理的实时会话 HUD、托管 tmux 启动器、会话浏览器与技能面板",
   "category": "ai",
   "icon": "bot",
   "entry": "./dist/main.js",
@@ -16,30 +18,34 @@
   "commands": [
     {
       "id": "omp.quick-launch",
-      "title": "OMP: Launch Preset in New Tab"
+      "title": "OMP: launch a profile in a new tab"
     },
     {
       "id": "omp.split-launch",
-      "title": "OMP: Launch Preset in Split Pane"
+      "title": "OMP: launch a profile in a split pane"
     },
     {
       "id": "omp.skill-palette",
-      "title": "OMP: Search and Inject Skill"
+      "title": "OMP: search skills and inject one"
     },
     {
       "id": "omp.open-session-viewer",
-      "title": "OMP: Open Visual Session Explorer"
+      "title": "OMP: open the session explorer"
     },
     {
       "id": "omp.tmux-copymode",
-      "title": "OMP: Toggle Tmux Copy-Mode"
+      "title": "OMP: toggle tmux copy-mode"
     }
   ],
   "bin": {
     "mode": "cli",
     "entry": "./bin/omp-bridge",
     "entries": {
-      "windows-x86_64": "./bin/omp-bridge.cmd"
+      "windows-x86_64": "./bin/omp-bridge.cmd",
+      "windows-aarch64": "./bin/omp-bridge.cmd"
     }
+  },
+  "requirements": {
+    "cli": "omp"
   }
 }

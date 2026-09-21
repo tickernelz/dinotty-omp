@@ -1,61 +1,67 @@
 import type { Disposable, PluginContext, PluginExports } from './types/dinotty';
 import MainView from './views/MainView.vue';
 import MiniHudOverlay from './overlay/MiniHudOverlay.vue';
-import { createOmpMonitorSeries } from './services/statusMonitor';
-import { discoverPresets, buildPresetQuickPickItems } from './services/presetService';
-import { loadAllSkills, injectSkillIntoActiveTerminal } from './services/skillService';
+import { createOmpMonitor } from './services/statusMonitor';
+import { buildPresetQuickPickItems, discoverPresets } from './services/presetService';
+import { injectSkill, loadAllSkills, clearSkillCache } from './services/skillService';
 import { toggleCopyMode } from './services/tmuxLauncher';
+import { clearSessionCache } from './services/sessionResolver';
+import { resetHostInfo } from './services/hostInfo';
 
-let activeDisposables: Disposable[] = [];
+let teardown: Array<() => void> = [];
+
+function track(disposable: Disposable): void {
+  teardown.push(() => disposable.dispose());
+}
 
 export function activate(ctx: PluginContext): PluginExports {
-  activeDisposables = [];
+  teardown = [];
 
-  const cmdOpenViewer = ctx.commands.register('omp.open-session-viewer', () => {
-    ctx.open();
-  });
-  activeDisposables.push(cmdOpenViewer);
+  track(
+    ctx.commands.register('omp.open-session-viewer', () => {
+      ctx.open();
+    })
+  );
 
-  const cmdToggleCopy = ctx.commands.register('omp.tmux-copymode', () => {
-    toggleCopyMode(ctx);
-  });
-  activeDisposables.push(cmdToggleCopy);
+  track(
+    ctx.commands.register('omp.tmux-copymode', () => {
+      void toggleCopyMode(ctx);
+    })
+  );
 
-  const cmdQuickLaunch = ctx.commands.registerQuickPick('omp.quick-launch', {
-    title: 'OMP: Launch Preset in New Tab',
-    items: async () => {
-      const presets = await discoverPresets(ctx.workspace);
-      return buildPresetQuickPickItems(ctx, presets, 'new-tab');
-    }
-  });
-  activeDisposables.push(cmdQuickLaunch);
+  track(
+    ctx.commands.registerQuickPick('omp.quick-launch', {
+      title: 'OMP: launch a profile in a new tab',
+      items: async () => buildPresetQuickPickItems(ctx, await discoverPresets(ctx), 'new-tab')
+    })
+  );
 
-  const cmdSplitLaunch = ctx.commands.registerQuickPick('omp.split-launch', {
-    title: 'OMP: Launch Preset in Split Pane',
-    items: async () => {
-      const presets = await discoverPresets(ctx.workspace);
-      return buildPresetQuickPickItems(ctx, presets, 'split-v');
-    }
-  });
-  activeDisposables.push(cmdSplitLaunch);
+  track(
+    ctx.commands.registerQuickPick('omp.split-launch', {
+      title: 'OMP: launch a profile in a split pane',
+      items: async () => buildPresetQuickPickItems(ctx, await discoverPresets(ctx), 'split-v')
+    })
+  );
 
-  const cmdSkillPalette = ctx.commands.registerQuickPick('omp.skill-palette', {
-    title: 'OMP: Search & Inject Skill (600+ Skills)',
-    items: async () => {
-      const skills = await loadAllSkills(ctx.workspace);
-      return skills.map((s) => ({
-        label: s.name,
-        detail: s.description,
-        icon: 'book',
-        action: () => {
-          injectSkillIntoActiveTerminal(ctx, s.name);
-        }
-      }));
-    }
-  });
-  activeDisposables.push(cmdSkillPalette);
+  track(
+    ctx.commands.registerQuickPick('omp.skill-palette', {
+      title: 'OMP: search skills and inject one',
+      items: async () => {
+        const skills = await loadAllSkills(ctx);
+        return skills.map((skill) => ({
+          label: skill.name,
+          detail: skill.description,
+          icon: 'book',
+          action: () => {
+            injectSkill(ctx, skill.name);
+          }
+        }));
+      }
+    })
+  );
 
-  const monitorSeries = createOmpMonitorSeries(ctx);
+  const monitor = createOmpMonitor(ctx);
+  teardown.push(() => monitor.dispose());
 
   return {
     component: MainView,
@@ -68,20 +74,19 @@ export function activate(ctx: PluginContext): PluginExports {
         defaultPosition: 'top-right'
       }
     ],
-    monitor: {
-      series: [monitorSeries]
-    },
-    dispose: () => {
-      deactivate();
-    }
+    monitor: { series: [monitor.series] },
+    dispose: deactivate
   };
 }
 
 export function deactivate(): void {
-  for (const d of activeDisposables) {
+  for (const dispose of teardown) {
     try {
-      d.dispose();
+      dispose();
     } catch {}
   }
-  activeDisposables = [];
+  teardown = [];
+  clearSessionCache();
+  clearSkillCache();
+  resetHostInfo();
 }

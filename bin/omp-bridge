@@ -2,208 +2,504 @@
 import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 
-const action = process.argv[2] || 'active';
-const paneId = process.argv[3] || '';
-const homeDir = os.homedir();
-const isWin = os.platform() === 'win32';
+const PLATFORM = os.platform();
+const IS_WINDOWS = PLATFORM === 'win32';
+const IS_MACOS = PLATFORM === 'darwin';
+const HOME = os.homedir();
+const SESSION_FILE_PATTERN = /^\d{4}-\d{2}-\d{2}T[\dTZ:.\-]*_[0-9a-f-]+\.jsonl$/i;
+const METRIC_CACHE_FILE = path.join(os.tmpdir(), 'dinotty-omp-metrics.json');
+const METRIC_CACHE_LIMIT = 24;
+const WINDOWS_FRESHNESS_MS = 90_000;
 
-function safeExec(cmd) {
+function ompHome() {
+  return process.env.PI_CODING_AGENT_DIR || path.join(HOME, '.omp', 'agent');
+}
+
+function ompRunHome() {
+  return path.join(HOME, '.omp', 'run', 'daemons');
+}
+
+function run(file, args, timeout = 2000) {
   try {
-    return execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'], timeout: 1500 }).trim();
+    return execFileSync(file, args, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout,
+      windowsHide: true
+    }).trim();
   } catch {
     return '';
   }
 }
 
-function parseSessionSummary(filePath) {
-  if (!filePath || !fs.existsSync(filePath)) return null;
-
+function readJson(filePath) {
   try {
-    const content = fs.readFileSync(filePath, 'utf8');
-    const lines = content.split('\n');
-
-    let model = 'unknown';
-    let provider = 'unknown';
-    let thinkingLevel = 'auto';
-    let totalTokens = 0;
-    let totalCost = 0;
-    let status = 'idle';
-    const pendingCalls = new Set();
-
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      try {
-        const obj = JSON.parse(line);
-        if (obj.type === 'model_change') {
-          if (obj.model) model = String(obj.model);
-          if (obj.provider) provider = String(obj.provider);
-          if (obj.thinkingLevel) thinkingLevel = String(obj.thinkingLevel);
-        } else if (obj.type === 'message') {
-          const msg = obj.message || {};
-          if (msg.model) model = String(msg.model);
-          if (msg.provider) provider = String(msg.provider);
-
-          if (msg.usage) {
-            if (typeof msg.usage.totalTokens === 'number') {
-              totalTokens = msg.usage.totalTokens;
-            }
-            if (msg.usage.cost && typeof msg.usage.cost.total === 'number') {
-              totalCost += msg.usage.cost.total;
-            }
-          }
-
-          if (msg.role === 'assistant') {
-            let hasCalls = false;
-            if (Array.isArray(msg.content)) {
-              for (const p of msg.content) {
-                if (p.type === 'toolCall' && p.id) {
-                  hasCalls = true;
-                  pendingCalls.add(p.id);
-                }
-              }
-            }
-            if (!hasCalls && pendingCalls.size === 0) {
-              status = 'idle';
-            }
-          } else if (msg.role === 'user') {
-            status = 'thinking';
-          } else if (msg.role === 'toolResult') {
-            if (msg.toolCallId) pendingCalls.delete(msg.toolCallId);
-            if (pendingCalls.size === 0) {
-              status = 'idle';
-            }
-          }
-        } else if (obj.type === 'custom' && obj.customType === 'tool_execution_start') {
-          status = 'running_tool';
-          if (obj.data?.toolCallId) pendingCalls.add(obj.data.toolCallId);
-        } else if (obj.type === 'custom' && obj.customType === 'session_exit') {
-          status = 'idle';
-          pendingCalls.clear();
-        }
-      } catch {}
-    }
-
-    return {
-      model,
-      provider,
-      thinkingLevel,
-      totalTokens,
-      totalCost,
-      status: pendingCalls.size > 0 ? 'running_tool' : status
-    };
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch {
     return null;
   }
 }
 
-function resolveByPane(targetPane) {
-  let targetCwd = '';
-  let sessionFile = '';
-  let isRunning = false;
+function isAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return err && err.code === 'EPERM';
+  }
+}
 
-  if (targetPane) {
-    const ledgerPath = path.join(homeDir, '.config', 'dinotty', 'session-ledger.json');
-    if (fs.existsSync(ledgerPath)) {
+function normalizeDir(input) {
+  if (!input) return '';
+  let value = String(input).trim();
+  if (!value) return '';
+  if (value.startsWith('~')) value = path.join(HOME, value.slice(1));
+  value = path.resolve(value);
+  if (value.length > 1 && (value.endsWith('/') || value.endsWith('\\'))) {
+    value = value.slice(0, -1);
+  }
+  return IS_WINDOWS ? value.toLowerCase() : value;
+}
+
+function encodeWorkspaceSlug(cwd) {
+  if (!cwd) return '-';
+  const normalized = String(cwd).replace(/\\/g, '/').replace(/\/+$/, '');
+  const homePrefix = HOME.replace(/\\/g, '/').replace(/\/+$/, '');
+  let relative = normalized.startsWith(homePrefix)
+    ? normalized.slice(homePrefix.length)
+    : normalized;
+  relative = relative.replace(/^\/+/, '');
+  if (!relative) return '-';
+  return '-' + relative.replace(/[^a-zA-Z0-9_-]+/g, '-');
+}
+
+function listProcesses() {
+  if (IS_WINDOWS) return [];
+  const raw = run('ps', ['-eo', 'pid=,ppid=,comm=']);
+  if (!raw) return [];
+  const rows = [];
+  for (const line of raw.split('\n')) {
+    const match = line.trim().match(/^(\d+)\s+(\d+)\s+(.*)$/);
+    if (match) {
+      rows.push({ pid: Number(match[1]), ppid: Number(match[2]), comm: match[3].trim() });
+    }
+  }
+  return rows;
+}
+
+function descendantsOf(rootPid, table) {
+  const children = new Map();
+  for (const row of table) {
+    if (!children.has(row.ppid)) children.set(row.ppid, []);
+    children.get(row.ppid).push(row);
+  }
+  const found = [];
+  const queue = [rootPid];
+  const seen = new Set(queue);
+  while (queue.length) {
+    const current = queue.shift();
+    for (const child of children.get(current) || []) {
+      if (seen.has(child.pid)) continue;
+      seen.add(child.pid);
+      found.push(child);
+      queue.push(child.pid);
+    }
+  }
+  return found;
+}
+
+function tmuxAvailable() {
+  return Boolean(run('tmux', ['-V'], 1000));
+}
+
+function resolveWorkspaceFromPane(paneId, cwdHint) {
+  const fallback = normalizeDir(cwdHint);
+  if (IS_WINDOWS || !paneId) return fallback;
+
+  const ledger = readJson(path.join(HOME, '.config', 'dinotty', 'session-ledger.json'));
+  const entry = ledger?.entries?.find((item) => item.pane_id === paneId);
+  if (!entry?.pid) return fallback;
+
+  const shellPid = entry.pid;
+  const tty = run('ps', ['-o', 'tty=', '-p', String(shellPid)]).trim();
+  if (tty && tty !== '?' && tmuxAvailable()) {
+    const clients = run('tmux', ['list-clients', '-F', '#{client_tty}\t#{client_session}']);
+    for (const line of clients.split('\n')) {
+      const [clientTty, sessionName] = line.split('\t');
+      if (!clientTty || !sessionName) continue;
+      if (clientTty.trim() !== `/dev/${tty}` && clientTty.trim() !== tty) continue;
+      const panePath = run('tmux', [
+        'list-panes',
+        '-t',
+        sessionName.trim(),
+        '-F',
+        '#{pane_current_path}'
+      ]).split('\n')[0];
+      const resolved = normalizeDir(panePath);
+      if (resolved) return resolved;
+    }
+  }
+
+  try {
+    const direct = fs.realpathSync(`/proc/${shellPid}/cwd`);
+    if (direct) return normalizeDir(direct);
+  } catch {}
+
+  return fallback;
+}
+
+function liveOmpClients() {
+  const root = ompRunHome();
+  if (!fs.existsSync(root)) return [];
+  const clients = [];
+  let daemons = [];
+  try {
+    daemons = fs.readdirSync(root);
+  } catch {
+    return [];
+  }
+  for (const daemon of daemons) {
+    const clientDir = path.join(root, daemon, 'clients');
+    if (!fs.existsSync(clientDir)) continue;
+    let files = [];
+    try {
+      files = fs.readdirSync(clientDir);
+    } catch {
+      continue;
+    }
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue;
+      const record = readJson(path.join(clientDir, file));
+      if (!record || !record.projectDir || !isAlive(record.pid)) continue;
+      clients.push({ pid: record.pid, projectDir: normalizeDir(record.projectDir) });
+    }
+  }
+  return clients;
+}
+
+function openSessionFilesFor(pid) {
+  const candidates = [];
+  if (IS_WINDOWS) return candidates;
+
+  if (IS_MACOS) {
+    const raw = run('lsof', ['-p', String(pid), '-Fn'], 3000);
+    for (const line of raw.split('\n')) {
+      if (line.startsWith('n') && line.endsWith('.jsonl')) candidates.push(line.slice(1));
+    }
+    return candidates;
+  }
+
+  const fdDir = `/proc/${pid}/fd`;
+  let handles = [];
+  try {
+    handles = fs.readdirSync(fdDir);
+  } catch {
+    return candidates;
+  }
+  for (const handle of handles) {
+    try {
+      const target = fs.readlinkSync(path.join(fdDir, handle));
+      if (target.endsWith('.jsonl')) candidates.push(target);
+    } catch {}
+  }
+  return candidates;
+}
+
+function newestTopLevelSession(workspaceDir) {
+  const dir = path.join(ompHome(), 'sessions', encodeWorkspaceSlug(workspaceDir));
+  if (!fs.existsSync(dir)) return null;
+  let best = null;
+  let entries = [];
+  try {
+    entries = fs.readdirSync(dir);
+  } catch {
+    return null;
+  }
+  for (const name of entries) {
+    if (!SESSION_FILE_PATTERN.test(name)) continue;
+    const full = path.join(dir, name);
+    try {
+      const stat = fs.statSync(full);
+      if (!best || stat.mtimeMs > best.mtimeMs) best = { path: full, mtimeMs: stat.mtimeMs };
+    } catch {}
+  }
+  return best;
+}
+
+function resolveSessionFile(workspaceDir, pids) {
+  let best = null;
+  for (const pid of pids) {
+    for (const candidate of openSessionFilesFor(pid)) {
+      if (!SESSION_FILE_PATTERN.test(path.basename(candidate))) continue;
       try {
-        const ledger = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'));
-        const entry = ledger.entries?.find((e) => e.pane_id === targetPane);
-        if (entry && entry.pid) {
-          const pid = entry.pid;
-          if (!isWin) {
-            const tty = safeExec(`ps -o tty= -p ${pid}`).trim();
-            if (tty) {
-              const clientsOut = safeExec(`tmux list-clients -F '#{client_tty} #{client_session}'`);
-              for (const line of clientsOut.split('\n')) {
-                const parts = line.trim().split(/\s+/);
-                if (parts[0] === `/dev/${tty}` && parts[1]) {
-                  const sName = parts[1];
-                  const pInfo = safeExec(`tmux list-panes -t "${sName}" -F '#{pane_current_command}|#{pane_current_path}'`).split('\n')[0] || '';
-                  const [cmd, pPath] = pInfo.split('|');
-                  targetCwd = pPath || '';
-                  const ompPid = safeExec(`tmux list-panes -t "${sName}" -F '#{pane_pid}'`);
-                  if (cmd === 'omp') {
-                    isRunning = true;
-                  } else if (ompPid) {
-                    const childOmp = safeExec(`pgrep -P "${ompPid}" -f omp || true`).trim();
-                    if (childOmp) isRunning = true;
-                  }
-                  break;
-                }
-              }
-            }
-            if (!targetCwd && fs.existsSync(`/proc/${pid}/cwd`)) {
-              try {
-                targetCwd = fs.realpathSync(`/proc/${pid}/cwd`);
-                const childOmp = safeExec(`pgrep -P "${pid}" -f omp || true`).trim();
-                if (childOmp) isRunning = true;
-              } catch {}
-            }
-          }
-        }
+        const stat = fs.statSync(candidate);
+        if (!best || stat.mtimeMs > best.mtimeMs) best = { path: candidate, mtimeMs: stat.mtimeMs };
       } catch {}
     }
   }
+  if (best) return best.path;
 
-  if (!isWin) {
-    safeExec("tmux set-option -g set-titles on 2>/dev/null && tmux set-option -g set-titles-string '#T' 2>/dev/null || true");
+  const fallback = newestTopLevelSession(workspaceDir);
+  if (!fallback) return '';
+  if (IS_WINDOWS && Date.now() - fallback.mtimeMs > WINDOWS_FRESHNESS_MS) return '';
+  return fallback.path;
+}
+
+function loadMetricCache() {
+  const cache = readJson(METRIC_CACHE_FILE);
+  return cache && typeof cache === 'object' ? cache : {};
+}
+
+function saveMetricCache(cache) {
+  const keys = Object.keys(cache);
+  if (keys.length > METRIC_CACHE_LIMIT) {
+    keys
+      .sort((a, b) => (cache[a].touchedAt || 0) - (cache[b].touchedAt || 0))
+      .slice(0, keys.length - METRIC_CACHE_LIMIT)
+      .forEach((key) => delete cache[key]);
   }
+  try {
+    fs.writeFileSync(METRIC_CACHE_FILE, JSON.stringify(cache), { mode: 0o600 });
+  } catch {}
+}
 
-  if (targetCwd && isRunning) {
-    let rel = path.relative(homeDir, targetCwd);
-    let slug = '-';
-    if (rel && !rel.startsWith('..')) {
-      slug = '-' + rel.split(path.sep).filter(Boolean).join('-');
-    } else {
-      slug = '-' + targetCwd.split(path.sep).filter(Boolean).join('-');
-    }
-
-    const wsDir = path.join(homeDir, '.omp', 'agent', 'sessions', slug);
-    if (fs.existsSync(wsDir)) {
-      try {
-        const files = fs.readdirSync(wsDir)
-          .filter((f) => f.endsWith('.jsonl') && !f.startsWith('__'))
-          .map((f) => {
-            const fp = path.join(wsDir, f);
-            return { path: fp, mtime: fs.statSync(fp).mtimeMs };
-          })
-          .sort((a, b) => b.mtime - a.mtime);
-        if (files.length > 0) {
-          sessionFile = files[0].path;
-        }
-      } catch {}
-    }
-  }
-
-  const summary = isRunning && sessionFile ? parseSessionSummary(sessionFile) : null;
-
-  const result = {
-    cwd: targetCwd || homeDir,
-    sessionFile: sessionFile || '',
-    isRunning: isRunning,
-    summary
+function emptyMetrics() {
+  return {
+    offset: 0,
+    model: '',
+    provider: '',
+    thinkingLevel: '',
+    totalTokens: 0,
+    contextTokens: 0,
+    totalCost: 0,
+    status: 'idle',
+    pending: [],
+    turns: 0,
+    updatedAt: 0
   };
-  process.stdout.write(JSON.stringify(result) + '\n');
 }
 
-if (action === 'pane' || action === 'active') {
-  resolveByPane(paneId);
-  process.exit(0);
-}
-
-if (action === 'tmux-panes') {
-  if (isWin) {
-    process.stdout.write('[]\n');
-    process.exit(0);
+function applyLine(state, line) {
+  if (!line) return;
+  let record;
+  try {
+    record = JSON.parse(line);
+  } catch {
+    return;
   }
-  const out = safeExec("tmux list-panes -a -F '{\"session\":\"#{session_name}\",\"active\":\"#{pane_active}\",\"path\":\"#{pane_current_path}\",\"cmd\":\"#{pane_current_command}\"}'");
-  const parsed = out.split('\n').filter(Boolean).map((l) => {
-    try { return JSON.parse(l); } catch { return null; }
-  }).filter(Boolean);
-  process.stdout.write(JSON.stringify(parsed) + '\n');
-  process.exit(0);
+
+  if (record.type === 'model_change') {
+    if (record.model) state.model = String(record.model);
+    if (record.provider) state.provider = String(record.provider);
+    if (record.thinkingLevel) state.thinkingLevel = String(record.thinkingLevel);
+    return;
+  }
+
+  if (record.type === 'thinking_level_change') {
+    if (record.thinkingLevel) state.thinkingLevel = String(record.thinkingLevel);
+    return;
+  }
+
+  if (record.type === 'custom') {
+    if (record.customType === 'tool_execution_start') {
+      const id = record.data?.toolCallId;
+      if (id && !state.pending.includes(id)) state.pending.push(id);
+      state.status = 'running_tool';
+    } else if (record.customType === 'session_exit') {
+      state.pending = [];
+      state.status = 'idle';
+    }
+    return;
+  }
+
+  if (record.type !== 'message') return;
+
+  const message = record.message || {};
+  if (message.model) state.model = String(message.model);
+  if (message.provider) state.provider = String(message.provider);
+
+  const usage = message.usage;
+  if (usage) {
+    if (typeof usage.totalTokens === 'number') state.totalTokens = usage.totalTokens;
+    if (typeof usage.cost?.total === 'number') state.totalCost += usage.cost.total;
+  }
+  const snapshotTokens = message.contextSnapshot?.promptTokens;
+  if (typeof snapshotTokens === 'number') state.contextTokens = snapshotTokens;
+
+  if (message.role === 'assistant') {
+    state.turns += 1;
+    let opened = false;
+    if (Array.isArray(message.content)) {
+      for (const part of message.content) {
+        if (part?.type === 'toolCall' && part.id) {
+          opened = true;
+          if (!state.pending.includes(part.id)) state.pending.push(part.id);
+        }
+      }
+    }
+    state.status = opened || state.pending.length > 0 ? 'running_tool' : 'idle';
+    return;
+  }
+
+  if (message.role === 'user') {
+    state.status = 'thinking';
+    return;
+  }
+
+  if (message.role === 'toolResult') {
+    if (message.toolCallId) {
+      state.pending = state.pending.filter((id) => id !== message.toolCallId);
+    }
+    if (message.isError) state.status = 'error';
+    else if (state.pending.length === 0) state.status = 'thinking';
+    return;
+  }
 }
 
-process.stdout.write(JSON.stringify({ error: 'unknown action' }) + '\n');
-process.exit(1);
+function readMetrics(sessionFile) {
+  if (!sessionFile || !fs.existsSync(sessionFile)) return null;
+
+  let stat;
+  try {
+    stat = fs.statSync(sessionFile);
+  } catch {
+    return null;
+  }
+
+  const cache = loadMetricCache();
+  const cached = cache[sessionFile];
+  let state =
+    cached && cached.offset <= stat.size && cached.mtimeMs <= stat.mtimeMs
+      ? { ...emptyMetrics(), ...cached, pending: Array.isArray(cached.pending) ? cached.pending : [] }
+      : emptyMetrics();
+
+  const start = state.offset > 0 && state.offset <= stat.size ? state.offset : 0;
+  if (start === 0) state = emptyMetrics();
+  if (start >= stat.size && cached) {
+    return finalizeMetrics(state);
+  }
+
+  let handle;
+  try {
+    handle = fs.openSync(sessionFile, 'r');
+  } catch {
+    return null;
+  }
+
+  const length = stat.size - start;
+  const buffer = Buffer.allocUnsafe(length);
+  try {
+    fs.readSync(handle, buffer, 0, length, start);
+  } catch {
+    fs.closeSync(handle);
+    return null;
+  }
+  fs.closeSync(handle);
+
+  const chunk = buffer.toString('utf8');
+  const lastBreak = chunk.lastIndexOf('\n');
+  const complete = lastBreak >= 0 ? chunk.slice(0, lastBreak) : '';
+  const consumed = lastBreak >= 0 ? Buffer.byteLength(complete, 'utf8') + 1 : 0;
+
+  for (const line of complete.split('\n')) {
+    applyLine(state, line.trim());
+  }
+
+  state.offset = start + consumed;
+  state.mtimeMs = stat.mtimeMs;
+  state.touchedAt = Date.now();
+  cache[sessionFile] = state;
+  saveMetricCache(cache);
+
+  return finalizeMetrics(state);
+}
+
+function finalizeMetrics(state) {
+  return {
+    model: state.model || 'unknown',
+    provider: state.provider || 'unknown',
+    thinkingLevel: state.thinkingLevel || 'auto',
+    totalTokens: state.contextTokens || state.totalTokens || 0,
+    totalCost: Number(state.totalCost.toFixed(6)),
+    turns: state.turns || 0,
+    status: state.pending.length > 0 ? 'running_tool' : state.status || 'idle'
+  };
+}
+
+function describePane(paneId, cwdHint) {
+  const workspace = resolveWorkspaceFromPane(paneId, cwdHint);
+  const clients = liveOmpClients();
+  const matching = workspace ? clients.filter((client) => client.projectDir === workspace) : [];
+
+  if (matching.length === 0) {
+    return { cwd: workspace, sessionFile: '', isRunning: false, state: 'inactive', summary: null };
+  }
+
+  const sessionFile = resolveSessionFile(workspace, matching.map((client) => client.pid));
+  if (!sessionFile) {
+    return { cwd: workspace, sessionFile: '', isRunning: true, state: 'starting', summary: null };
+  }
+
+  const summary = readMetrics(sessionFile);
+  if (!summary) {
+    return { cwd: workspace, sessionFile, isRunning: true, state: 'starting', summary: null };
+  }
+
+  return { cwd: workspace, sessionFile, isRunning: true, state: 'running', summary };
+}
+
+function listTmuxPanes() {
+  if (IS_WINDOWS || !tmuxAvailable()) return [];
+  const raw = run('tmux', [
+    'list-panes',
+    '-a',
+    '-F',
+    '#{session_name}\t#{pane_active}\t#{pane_current_path}\t#{pane_current_command}'
+  ]);
+  const panes = [];
+  for (const line of raw.split('\n')) {
+    const [session, active, cwd, command] = line.split('\t');
+    if (!session) continue;
+    panes.push({ session, active: active === '1', cwd: cwd || '', command: command || '' });
+  }
+  return panes;
+}
+
+function emit(value) {
+  process.stdout.write(JSON.stringify(value) + '\n');
+}
+
+function main() {
+  const [action = 'pane', paneId = '', cwdHint = ''] = process.argv.slice(2);
+
+  if (action === 'pane' || action === 'active') {
+    emit(describePane(paneId, cwdHint));
+    return 0;
+  }
+
+  if (action === 'tmux-panes') {
+    emit(listTmuxPanes());
+    return 0;
+  }
+
+  if (action === 'doctor') {
+    emit({
+      platform: PLATFORM,
+      node: process.version,
+      home: HOME,
+      ompHome: ompHome(),
+      ompHomeExists: fs.existsSync(ompHome()),
+      tmux: tmuxAvailable(),
+      liveClients: liveOmpClients().length
+    });
+    return 0;
+  }
+
+  emit({ error: `unknown action: ${action}` });
+  return 1;
+}
+
+process.exitCode = main();

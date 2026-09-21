@@ -1,121 +1,139 @@
 import type { PluginContext } from '../types/dinotty';
+import { getHostInfo, joinHostPath } from './hostInfo';
 
 export interface SkillItem {
   id: string;
   name: string;
   description: string;
   category: string;
+  source: string;
   filePath: string;
-  body?: string;
+  body: string;
 }
 
-let cachedSkills: SkillItem[] = [];
-let lastSkillsScan = 0;
+const CATEGORY_RULES: Array<{ category: string; match: RegExp }> = [
+  { category: 'verification', match: /\b(test|verify|prove|gate|benchmark|regression|audit)\b/ },
+  { category: 'diagnostics', match: /\b(diagnos|debug|triage|trace|investigat|root cause)\b/ },
+  { category: 'delivery', match: /\b(deploy|release|ship|publish|rollout|ci|pipeline|merge)\b/ },
+  { category: 'authoring', match: /\b(write|author|document|readme|spec|plan|design)\b/ }
+];
 
-function parseSkillFrontmatter(content: string): { name: string; description: string; body: string } {
-  const match = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/);
-  if (!match) {
-    return { name: '', description: '', body: content };
-  }
+let cache: SkillItem[] = [];
+let cachedAt = 0;
+const CACHE_TTL_MS = 60_000;
 
-  const yamlBlock = match[1];
-  const body = match[2];
-  let name = '';
-  let description = '';
-
-  for (const line of yamlBlock.split('\n')) {
-    const nameMatch = line.match(/^name:\s*(.+)$/);
-    if (nameMatch) name = nameMatch[1].trim().replace(/^['"]|['"]$/g, '');
-
-    const descMatch = line.match(/^description:\s*(.+)$/);
-    if (descMatch) description = descMatch[1].trim().replace(/^['"]|['"]$/g, '');
-  }
-
-  return { name, description, body };
-}
-
-function categorizeSkill(name: string, desc: string): string {
-  const text = `${name} ${desc}`.toLowerCase();
-  if (text.includes('test') || text.includes('benchmark') || text.includes('gate') || text.includes('verify')) {
-    return 'verification';
-  }
-  if (text.includes('diagnos') || text.includes('audit') || text.includes('triage') || text.includes('trace')) {
-    return 'diagnostics';
-  }
-  if (text.includes('git') || text.includes('mr') || text.includes('ci') || text.includes('deploy') || text.includes('release')) {
-    return 'devops';
-  }
-  if (text.includes('apollo') || text.includes('hmx') || text.includes('dcm') || text.includes('odoo')) {
-    return 'workspaces';
+function classify(name: string, description: string): string {
+  const haystack = `${name} ${description}`.toLowerCase();
+  for (const rule of CATEGORY_RULES) {
+    if (rule.match.test(haystack)) return rule.category;
   }
   return 'general';
 }
 
-export async function loadAllSkills(
-  workspace: PluginContext['workspace'],
-  force = false
-): Promise<SkillItem[]> {
-  const now = Date.now();
-  if (!force && cachedSkills.length > 0 && now - lastSkillsScan < 60000) {
-    return cachedSkills;
+function parseFrontmatter(content: string): { name: string; description: string; body: string } {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+  if (!match) return { name: '', description: '', body: content };
+
+  let name = '';
+  let description = '';
+  for (const line of match[1].split(/\r?\n/)) {
+    const nameMatch = line.match(/^name:\s*(.+)$/);
+    if (nameMatch) name = nameMatch[1].trim().replace(/^['"]|['"]$/g, '');
+    const descriptionMatch = line.match(/^description:\s*(.+)$/);
+    if (descriptionMatch) description = descriptionMatch[1].trim().replace(/^['"]|['"]$/g, '');
   }
 
-  const items: SkillItem[] = [];
-  const roots = ['~/.omp/agent/managed-skills', '~/.agents/skills'];
+  return { name, description, body: match[2] };
+}
+
+async function skillRoots(ctx: PluginContext): Promise<Array<{ label: string; path: string }>> {
+  const host = await getHostInfo(ctx);
+  const roots: Array<{ label: string; path: string }> = [];
+
+  if (host?.ompHome) {
+    roots.push({ label: 'managed', path: joinHostPath(host.ompHome, 'managed-skills') });
+    roots.push({ label: 'project', path: joinHostPath(host.ompHome, 'skills') });
+  } else {
+    roots.push({ label: 'managed', path: '~/.omp/agent/managed-skills' });
+    roots.push({ label: 'project', path: '~/.omp/agent/skills' });
+  }
+
+  if (host?.home) {
+    roots.push({ label: 'user', path: joinHostPath(host.home, '.agents', 'skills') });
+  } else {
+    roots.push({ label: 'user', path: '~/.agents/skills' });
+  }
+
+  return roots;
+}
+
+export async function loadAllSkills(ctx: PluginContext, force = false): Promise<SkillItem[]> {
+  const now = Date.now();
+  if (!force && cache.length && now - cachedAt < CACHE_TTL_MS) return cache;
+
+  const roots = await skillRoots(ctx);
+  const separator = roots[0]?.path.includes('\\') ? '\\' : '/';
+  const collected = new Map<string, SkillItem>();
 
   for (const root of roots) {
+    let listing;
     try {
-      const list = await workspace.readDir(root);
-      for (const entry of list.entries) {
-        if (!entry.is_dir) continue;
-        const skillName = entry.name;
-        const skillPath = `${root}/${skillName}/SKILL.md`;
+      listing = await ctx.workspace.readDir(root.path);
+    } catch {
+      continue;
+    }
 
-        try {
-          const file = await workspace.readFile(skillPath);
-          if (file && file.content) {
-            const { name, description, body } = parseSkillFrontmatter(file.content);
-            const resolvedName = name || skillName;
-            items.push({
-              id: resolvedName,
-              name: resolvedName,
-              description: description || 'No description provided',
-              category: categorizeSkill(resolvedName, description),
-              filePath: skillPath,
-              body
-            });
-          }
-        } catch {}
-      }
-    } catch {}
+    for (const entry of listing.entries) {
+      if (!entry.is_dir) continue;
+      const skillFile = [root.path, entry.name, 'SKILL.md'].join(separator);
+      try {
+        const file = await ctx.workspace.readFile(skillFile);
+        if (!file.content) continue;
+        const { name, description, body } = parseFrontmatter(file.content);
+        const resolvedName = name || entry.name;
+        if (collected.has(resolvedName)) continue;
+        collected.set(resolvedName, {
+          id: resolvedName,
+          name: resolvedName,
+          description: description || 'No description provided.',
+          category: classify(resolvedName, description),
+          source: root.label,
+          filePath: skillFile,
+          body
+        });
+      } catch {}
+    }
   }
 
-  items.sort((a, b) => a.name.localeCompare(b.name));
-  cachedSkills = items;
-  lastSkillsScan = now;
-  return items;
+  cache = [...collected.values()].sort((a, b) => a.name.localeCompare(b.name));
+  cachedAt = now;
+  return cache;
 }
 
 export function filterSkills(skills: SkillItem[], query: string, category = 'all'): SkillItem[] {
-  const q = query.trim().toLowerCase();
-  return skills.filter((s) => {
-    if (category !== 'all' && s.category !== category) {
-      return false;
-    }
-    if (!q) return true;
-    return s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q);
+  const needle = query.trim().toLowerCase();
+  const terms = needle.split(/\s+/).filter(Boolean);
+
+  return skills.filter((skill) => {
+    if (category !== 'all' && skill.category !== category) return false;
+    if (!terms.length) return true;
+    const haystack = `${skill.name} ${skill.description}`.toLowerCase();
+    return terms.every((term) => haystack.includes(term));
   });
 }
 
-export function injectSkillIntoActiveTerminal(ctx: PluginContext, skillName: string): boolean {
-  const activePane = ctx.terminal.activePaneId();
-  if (!activePane) {
-    ctx.ui.notify('No active terminal pane found', 'warn');
+export function injectSkill(ctx: PluginContext, skillName: string): boolean {
+  const paneId = ctx.terminal.activePaneId();
+  if (!paneId) {
+    ctx.ui.notify('No active terminal pane to inject into', 'warn');
     return false;
   }
-
-  const cmd = `/skill ${skillName}\n`;
-  ctx.terminal.send(activePane, cmd);
-  ctx.ui.notify(`Injected skill: ${skillName}`, 'info');
+  ctx.terminal.send(paneId, `/skill ${skillName}\n`);
+  ctx.ui.notify(`Injected skill ${skillName}`, 'info');
   return true;
+}
+
+export function clearSkillCache(): void {
+  cache = [];
+  cachedAt = 0;
 }

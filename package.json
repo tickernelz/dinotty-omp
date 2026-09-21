@@ -1,17 +1,44 @@
 {
   "name": "dinotty-omp",
   "version": "1.0.0",
-  "description": "Superpowers suite for Oh My Pi in Dinotty: Managed Tmux Launcher, Live HUD, Session & Trace Explorer, and Skill Palette",
+  "description": "Dinotty plugin for the Oh My Pi coding agent: live session HUD, managed tmux launcher, visual session explorer and skill palette",
   "type": "module",
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
-    "symlink": "mkdir -p ~/.dinotty/plugins && ln -sfn \"$PWD\" ~/.dinotty/plugins/dinotty-omp"
+    "typecheck": "vue-tsc --noEmit",
+    "check:bridge": "node --check bin/omp-bridge",
+    "link": "node scripts/link-plugin.mjs",
+    "unlink": "node scripts/link-plugin.mjs --remove"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.5",
     "typescript": "^5.4.5",
     "vite": "^5.2.11",
-    "vue": "^3.4.27"
-  }
+    "vue": "^3.4.27",
+    "vue-tsc": "^2.2.0"
+  },
+  "license": "MIT",
+  "author": "zhafron",
+  "homepage": "https://github.com/zhafron/dinotty-omp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhafron/dinotty-omp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zhafron/dinotty-omp/issues"
+  },
+  "keywords": [
+    "dinotty",
+    "dinotty-plugin",
+    "omp",
+    "oh-my-pi",
+    "terminal",
+    "tmux",
+    "ai-agent"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.15.0"
 }

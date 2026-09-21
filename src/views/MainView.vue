@@ -1,513 +1,488 @@
 <template>
   <div class="omp-app">
-    <header class="omp-navbar">
-      <div class="omp-brand">
-        <Icon name="bot" :size="20" class="omp-brand-icon" />
-        <span class="omp-brand-title">OMP Pilot</span>
-        <span class="omp-brand-version">v1.0.0</span>
+    <header class="omp-app__bar">
+      <div class="omp-app__brand">
+        <Icon name="bot" :size="18" class="omp-app__brand-icon" />
+        <span class="omp-app__brand-name">OMP Pilot</span>
+        <span class="omp-app__version">v{{ version }}</span>
       </div>
 
-      <nav class="omp-nav-tabs">
+      <nav class="omp-app__tabs" role="tablist" aria-label="OMP Pilot sections">
         <button
+          v-for="tab in tabs"
+          :key="tab.id"
           type="button"
-          class="omp-nav-tab"
-          :class="{ active: currentTab === 'sessions' }"
-          @click="currentTab = 'sessions'"
+          role="tab"
+          class="omp-app__tab"
+          :class="{ 'is-active': activeTab === tab.id }"
+          :aria-selected="activeTab === tab.id"
+          @click="activeTab = tab.id"
         >
-          <Icon name="message-square" :size="15" />
-          <span>Sessions & Traces</span>
-        </button>
-
-        <button
-          type="button"
-          class="omp-nav-tab"
-          :class="{ active: currentTab === 'skills' }"
-          @click="currentTab = 'skills'"
-        >
-          <Icon name="book" :size="15" />
-          <span>Skill Matrix</span>
-          <span v-if="skills.length" class="omp-tab-badge">{{ skills.length }}</span>
-        </button>
-
-        <button
-          type="button"
-          class="omp-nav-tab"
-          :class="{ active: currentTab === 'presets' }"
-          @click="currentTab = 'presets'"
-        >
-          <Icon name="zap" :size="15" />
-          <span>Presets & Profiles</span>
+          <Icon :name="tab.icon" :size="14" />
+          <span>{{ tab.label }}</span>
+          <span v-if="tab.badge" class="omp-app__badge">{{ tab.badge }}</span>
         </button>
       </nav>
 
-      <div class="omp-nav-actions">
-        <button
-          type="button"
-          class="omp-btn omp-btn-primary"
-          title="Launch default OMP session in new tab"
-          @click="quickLaunchDefault"
-        >
-          <Icon name="play" :size="14" />
-          <span>Launch OMP</span>
+      <div class="omp-app__bar-actions">
+        <select v-model="launchPresetId" class="omp-field omp-field--compact" aria-label="Launch profile">
+          <option v-for="preset in presets" :key="preset.id" :value="preset.id">
+            {{ preset.label }}
+          </option>
+        </select>
+        <button type="button" class="omp-btn omp-btn--primary" @click="launchTab">
+          <Icon name="play" :size="13" />
+          <span>New OMP tab</span>
         </button>
       </div>
     </header>
 
-    <main class="omp-content">
-      <section v-show="currentTab === 'sessions'" class="omp-tab-pane omp-sessions-pane">
-        <div class="omp-sessions-sidebar">
-          <div class="omp-sidebar-search">
-            <Icon name="search" :size="14" class="omp-search-icon" />
-            <input
-              v-model="sessionQuery"
-              type="text"
-              class="omp-input"
-              placeholder="Search session files..."
-            />
+    <main class="omp-app__body">
+      <section v-show="activeTab === 'sessions'" class="omp-pane omp-pane--sessions">
+        <aside class="omp-sessions">
+          <div class="omp-sessions__head">
+            <div class="omp-field omp-field--search">
+              <Icon name="search" :size="13" />
+              <input v-model="sessionQuery" type="search" placeholder="Filter sessions" aria-label="Filter sessions" />
+            </div>
             <button
               type="button"
               class="omp-icon-btn"
-              title="Refresh session list"
-              @click="refreshSessions"
+              :class="{ 'is-busy': sessionsLoading }"
+              title="Reload session list"
+              @click="reloadSessions"
             >
               <Icon name="refresh" :size="13" />
             </button>
           </div>
 
-          <div class="omp-sidebar-list">
-            <div
-              v-for="file in filteredSessionFiles"
-              :key="file"
-              class="omp-session-card"
-              :class="{ active: selectedSessionPath === file }"
-              @click="selectSession(file)"
+          <label class="omp-toggle">
+            <input v-model="onlyCurrentWorkspace" type="checkbox" @change="reloadSessions" />
+            <span>This workspace only</span>
+          </label>
+
+          <div class="omp-sessions__list" role="listbox" aria-label="OMP sessions">
+            <p v-if="sessionsLoading" class="omp-hint">Loading sessions...</p>
+            <p v-else-if="!filteredSessions.length" class="omp-hint">
+              No transcripts found. Start OMP in a terminal tab and it will show up here.
+            </p>
+            <button
+              v-for="item in filteredSessions"
+              :key="item.path"
+              type="button"
+              role="option"
+              class="omp-session"
+              :class="{ 'is-active': selectedPath === item.path }"
+              :aria-selected="selectedPath === item.path"
+              @click="selectSession(item.path)"
             >
-              <div class="omp-session-card-head">
-                <Icon name="file-text" :size="13" />
-                <span class="omp-session-file-name">{{ extractSessionName(file) }}</span>
-              </div>
-              <div class="omp-session-card-sub">
-                <span>{{ extractWorkspace(file) }}</span>
-              </div>
-            </div>
-            <div v-if="!filteredSessionFiles.length" class="omp-empty-hint">
-              No session files found for current filter.
-            </div>
+              <span class="omp-session__title">
+                <Icon name="file-text" :size="12" />
+                {{ displayName(item.path) }}
+              </span>
+              <span class="omp-session__meta">
+                <span>{{ workspaceOf(item.path) }}</span>
+                <span>{{ relativeTime(item.modified) }}</span>
+              </span>
+            </button>
           </div>
-        </div>
+        </aside>
 
-        <div class="omp-transcript-panel">
-          <div v-if="activeSession" class="omp-transcript-container">
-            <header class="omp-transcript-header">
-              <div class="omp-header-meta">
-                <div class="omp-meta-badge">
-                  <Icon name="terminal" :size="13" />
-                  <span>{{ activeSession.model }}</span>
-                </div>
-                <div class="omp-meta-badge">
-                  <Icon name="cpu" :size="13" />
-                  <span>{{ activeSession.provider }}</span>
-                </div>
-                <div class="omp-meta-badge omp-meta-cost">
-                  <Icon name="zap" :size="13" />
-                  <span>${{ activeSession.totalCost.toFixed(4) }}</span>
-                </div>
-                <div class="omp-meta-badge">
-                  <Icon name="layers" :size="13" />
-                  <span>{{ activeSession.totalTokens.toLocaleString() }} tok</span>
-                </div>
+        <div class="omp-transcript">
+          <template v-if="session">
+            <header class="omp-transcript__head">
+              <div class="omp-transcript__meta">
+                <span class="omp-tag"><Icon name="cpu" :size="12" />{{ session.model }}</span>
+                <span class="omp-tag"><Icon name="layers" :size="12" />{{ session.totalTokens.toLocaleString() }} tok</span>
+                <span class="omp-tag omp-tag--cost"><Icon name="activity" :size="12" />{{ session.totalCost.toFixed(3) }} USD</span>
+                <span class="omp-tag"><Icon name="message-square" :size="12" />{{ session.messages.length }} entries</span>
               </div>
-
-              <div class="omp-header-actions">
-                <div class="omp-search-box">
-                  <Icon name="search" :size="13" />
-                  <input
-                    v-model="transcriptFilter"
-                    type="text"
-                    class="omp-mini-input"
-                    placeholder="Filter turns..."
-                  />
+              <div class="omp-transcript__tools">
+                <div class="omp-field omp-field--search">
+                  <Icon name="search" :size="12" />
+                  <input v-model="transcriptQuery" type="search" placeholder="Filter turns" aria-label="Filter turns" />
                 </div>
-                <button
-                  type="button"
-                  class="omp-btn"
-                  title="Resume this session in new terminal tab"
-                  @click="resumeInTerminal"
-                >
-                  <Icon name="play" :size="13" />
-                  <span>Resume</span>
-                </button>
-                <button
-                  type="button"
-                  class="omp-btn"
-                  title="Copy session transcript as Markdown"
-                  @click="copyTranscript"
-                >
-                  <Icon name="copy" :size="13" />
+                <button type="button" class="omp-btn" title="Copy the transcript as Markdown" @click="copyTranscript">
+                  <Icon name="copy" :size="12" />
                   <span>Copy</span>
+                </button>
+                <button type="button" class="omp-btn" title="Open this workspace in a new OMP tab" @click="resumeSession">
+                  <Icon name="external-link" :size="12" />
+                  <span>Open</span>
                 </button>
               </div>
             </header>
 
-            <div class="omp-turns-stream">
-              <div
-                v-for="msg in filteredMessages"
-                :key="msg.id"
-                class="omp-turn-message"
-                :class="msg.role"
+            <p v-if="session.truncated" class="omp-banner">
+              This transcript is larger than the host file preview limit, so only the first part is rendered.
+              Live metrics in the HUD are still exact.
+            </p>
+
+            <div class="omp-turns">
+              <p v-if="!visibleMessages.length" class="omp-hint">No turn matches that filter.</p>
+              <article
+                v-for="message in visibleMessages"
+                :key="message.id"
+                class="omp-turn"
+                :class="`omp-turn--${message.role}`"
               >
-                <div class="omp-turn-author">
-                  <div class="omp-author-badge">
-                    <Icon :name="msg.role === 'user' ? 'terminal' : msg.role === 'assistant' ? 'bot' : 'code'" :size="14" />
-                    <span class="omp-author-label">{{ msg.role.toUpperCase() }}</span>
-                  </div>
-                  <span class="omp-turn-time">{{ formatTime(msg.timestamp) }}</span>
-                </div>
+                <header class="omp-turn__head">
+                  <span class="omp-turn__role">
+                    <Icon :name="roleIcon(message.role)" :size="13" />
+                    {{ roleLabel(message.role) }}
+                  </span>
+                  <span class="omp-turn__time">{{ clockTime(message.timestamp) }}</span>
+                </header>
 
-                <div v-if="msg.thinking" class="omp-thinking-card">
+                <details v-if="message.thinking" class="omp-fold">
+                  <summary>Reasoning</summary>
+                  <pre class="omp-code">{{ message.thinking }}</pre>
+                </details>
+
+                <pre v-if="message.text" class="omp-turn__text">{{ message.text }}</pre>
+
+                <div v-if="message.images.length" class="omp-turn__images">
                   <button
+                    v-for="(image, index) in message.images"
+                    :key="index"
                     type="button"
-                    class="omp-thinking-toggle"
-                    @click="expandedThinking[msg.id] = !expandedThinking[msg.id]"
+                    class="omp-thumb"
+                    @click="lightbox = image"
                   >
-                    <Icon :name="expandedThinking[msg.id] ? 'chevron-down' : 'chevron-right'" :size="13" />
-                    <span>Thought Process</span>
+                    <img :src="image" alt="Attachment" loading="lazy" />
                   </button>
-                  <pre v-show="expandedThinking[msg.id]" class="omp-thinking-body">{{ msg.thinking }}</pre>
                 </div>
 
-                <div v-if="msg.text" class="omp-turn-body">
-                  <pre class="omp-text-content">{{ msg.text }}</pre>
-                </div>
-
-                <div v-if="msg.images && msg.images.length" class="omp-turn-images">
-                  <img
-                    v-for="(img, idx) in msg.images"
-                    :key="idx"
-                    :src="img"
-                    alt="Artifact"
-                    class="omp-rendered-image"
-                    @click="lightboxImage = img"
-                  />
-                </div>
-
-                <div v-if="msg.toolCalls && msg.toolCalls.length" class="omp-tools-list">
-                  <div
-                    v-for="tool in msg.toolCalls"
-                    :key="tool.id"
-                    class="omp-tool-card"
-                    :class="{ error: tool.isError }"
-                  >
-                    <div
-                      class="omp-tool-header"
-                      @click="expandedTools[tool.id] = !expandedTools[tool.id]"
-                    >
-                      <div class="omp-tool-title">
-                        <Icon :name="expandedTools[tool.id] ? 'chevron-down' : 'chevron-right'" :size="13" />
-                        <span class="omp-tool-name">{{ tool.name }}</span>
-                        <span v-if="tool.intent" class="omp-tool-intent">{{ tool.intent }}</span>
-                      </div>
-                      <span v-if="tool.isError" class="omp-tool-status error">Failed</span>
-                      <span v-else class="omp-tool-status success">Success</span>
-                    </div>
-
-                    <div v-show="expandedTools[tool.id]" class="omp-tool-details">
-                      <div class="omp-tool-section">
-                        <div class="omp-section-label">Arguments:</div>
-                        <pre class="omp-code-snippet">{{ formatJson(tool.arguments) }}</pre>
-                      </div>
-                      <div v-if="tool.result" class="omp-tool-section">
-                        <div class="omp-section-label">Result:</div>
-                        <pre class="omp-code-snippet">{{ tool.result }}</pre>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                <details
+                  v-for="call in message.toolCalls || []"
+                  :key="call.id"
+                  class="omp-fold omp-fold--tool"
+                  :class="{ 'is-error': call.isError }"
+                >
+                  <summary>
+                    <span class="omp-fold__name">{{ call.name }}</span>
+                    <span v-if="call.intent" class="omp-fold__intent">{{ call.intent }}</span>
+                    <span class="omp-fold__state">{{ call.isError ? 'failed' : 'ok' }}</span>
+                  </summary>
+                  <p class="omp-fold__label">Arguments</p>
+                  <pre class="omp-code">{{ pretty(call.arguments) }}</pre>
+                  <template v-if="call.result">
+                    <p class="omp-fold__label">Result</p>
+                    <pre class="omp-code">{{ call.result }}</pre>
+                  </template>
+                </details>
+              </article>
             </div>
-          </div>
-          <div v-else class="omp-empty-state">
-            <Icon name="history" :size="32" class="omp-empty-icon" />
-            <p>Select a session file from the left to view the interactive turn stream.</p>
+          </template>
+
+          <div v-else class="omp-empty">
+            <Icon name="history" :size="28" />
+            <p>Select a session on the left to read its transcript.</p>
           </div>
         </div>
       </section>
 
-      <section v-show="currentTab === 'skills'" class="omp-tab-pane omp-skills-pane">
-        <div class="omp-skills-toolbar">
-          <div class="omp-search-box omp-search-large">
-            <Icon name="search" :size="15" />
-            <input
-              v-model="skillSearchQuery"
-              type="text"
-              class="omp-input"
-              placeholder="Search 600+ skills by name, intent, or keywords..."
-            />
+      <section v-show="activeTab === 'skills'" class="omp-pane omp-pane--skills">
+        <div class="omp-skills__head">
+          <div class="omp-field omp-field--search omp-field--grow">
+            <Icon name="search" :size="14" />
+            <input v-model="skillQuery" type="search" placeholder="Search skills by name or intent" aria-label="Search skills" />
           </div>
-
-          <div class="omp-category-pills">
-            <button
-              v-for="cat in categories"
-              :key="cat"
-              type="button"
-              class="omp-pill"
-              :class="{ active: selectedCategory === cat }"
-              @click="selectedCategory = cat"
-            >
-              {{ cat }}
-            </button>
-          </div>
+          <button type="button" class="omp-icon-btn" title="Reload skills" @click="reloadSkills">
+            <Icon name="refresh" :size="13" />
+          </button>
         </div>
 
-        <div class="omp-skills-layout">
-          <div class="omp-skills-grid">
-            <div
+        <div class="omp-chips">
+          <button
+            v-for="category in skillCategories"
+            :key="category"
+            type="button"
+            class="omp-chip"
+            :class="{ 'is-active': skillCategory === category }"
+            @click="skillCategory = category"
+          >
+            {{ category }}
+          </button>
+        </div>
+
+        <div class="omp-skills__body">
+          <div class="omp-skills__grid">
+            <p v-if="skillsLoading" class="omp-hint">Indexing skills...</p>
+            <p v-else-if="!filteredSkills.length" class="omp-hint">No skill matches that search.</p>
+            <button
               v-for="skill in filteredSkills"
               :key="skill.id"
-              class="omp-skill-card"
-              :class="{ selected: selectedSkill?.id === skill.id }"
+              type="button"
+              class="omp-skill"
+              :class="{ 'is-active': selectedSkill?.id === skill.id }"
               @click="selectedSkill = skill"
             >
-              <div class="omp-skill-card-top">
-                <Icon name="book" :size="15" class="omp-skill-icon" />
-                <span class="omp-skill-name">{{ skill.name }}</span>
-                <span class="omp-skill-category-badge">{{ skill.category }}</span>
-              </div>
-              <p class="omp-skill-desc">{{ skill.description }}</p>
-              <div class="omp-skill-actions">
-                <button
-                  type="button"
-                  class="omp-btn omp-btn-sm"
-                  title="Inject /skill command into active terminal"
-                  @click.stop="injectSkill(skill.name)"
-                >
-                  <Icon name="terminal" :size="12" />
-                  <span>Inject</span>
-                </button>
-              </div>
-            </div>
+              <span class="omp-skill__title">
+                <Icon name="book" :size="13" />
+                {{ skill.name }}
+              </span>
+              <span class="omp-skill__desc">{{ skill.description }}</span>
+              <span class="omp-skill__tags">
+                <span class="omp-chip omp-chip--tiny">{{ skill.category }}</span>
+                <span class="omp-chip omp-chip--tiny">{{ skill.source }}</span>
+              </span>
+            </button>
           </div>
 
-          <div v-if="selectedSkill" class="omp-skill-preview">
-            <div class="omp-preview-header">
-              <div class="omp-preview-title-group">
-                <Icon name="book" :size="18" />
-                <h3>{{ selectedSkill.name }}</h3>
-              </div>
-              <button
-                type="button"
-                class="omp-btn omp-btn-primary omp-btn-sm"
-                @click="injectSkill(selectedSkill.name)"
-              >
-                <Icon name="terminal" :size="13" />
-                <span>Inject into Active Terminal</span>
+          <aside v-if="selectedSkill" class="omp-skill-detail">
+            <header>
+              <h3>{{ selectedSkill.name }}</h3>
+              <button type="button" class="omp-btn omp-btn--primary" @click="useSkill(selectedSkill.name)">
+                <Icon name="terminal" :size="12" />
+                <span>Inject</span>
               </button>
-            </div>
-            <p class="omp-preview-desc">{{ selectedSkill.description }}</p>
-            <div class="omp-preview-body">
-              <pre class="omp-skill-body-text">{{ selectedSkill.body || 'No extended documentation available.' }}</pre>
-            </div>
-          </div>
+            </header>
+            <p class="omp-skill-detail__desc">{{ selectedSkill.description }}</p>
+            <pre class="omp-code omp-code--tall">{{ selectedSkill.body || 'This skill has no body.' }}</pre>
+          </aside>
         </div>
       </section>
 
-      <section v-show="currentTab === 'presets'" class="omp-tab-pane omp-presets-pane">
-        <div class="omp-presets-header">
-          <h2>Configured Profiles & Presets</h2>
-          <p>Discovered profiles from ~/.omp/agent/config.*.yml. Launch directly in isolated tmux sessions.</p>
-        </div>
+      <section v-show="activeTab === 'profiles'" class="omp-pane omp-pane--profiles">
+        <header class="omp-profiles__head">
+          <h2>Profiles</h2>
+          <p>Discovered from the OMP agent directory. Launch one into a new tab or a split pane.</p>
+        </header>
 
-        <div class="omp-presets-grid">
-          <div
-            v-for="preset in presets"
-            :key="preset.id"
-            class="omp-preset-card"
-            :class="{ 'is-default': preset.isDefault }"
-          >
-            <div class="omp-preset-top">
-              <div class="omp-preset-icon-wrap">
-                <Icon name="zap" :size="18" />
-              </div>
+        <div class="omp-profiles__grid">
+          <article v-for="preset in presets" :key="preset.id" class="omp-profile" :class="{ 'is-default': preset.isDefault }">
+            <header>
+              <span class="omp-profile__icon"><Icon name="zap" :size="16" /></span>
               <div>
-                <h3 class="omp-preset-title">{{ preset.name }}</h3>
-                <span class="omp-preset-path">{{ preset.configPath }}</span>
+                <h3>{{ preset.label }}</h3>
+                <code>{{ preset.fileName }}</code>
               </div>
-            </div>
-
-            <div class="omp-preset-buttons">
-              <button
-                type="button"
-                class="omp-btn omp-btn-primary"
-                @click="launchPreset(preset.id, 'new-tab')"
-              >
-                <Icon name="play" :size="13" />
-                <span>Launch Tab</span>
+            </header>
+            <div class="omp-profile__actions">
+              <button type="button" class="omp-btn omp-btn--primary" @click="launchWith(preset, 'new-tab')">
+                <Icon name="play" :size="12" />
+                <span>New tab</span>
               </button>
-              <button
-                type="button"
-                class="omp-btn"
-                @click="launchPreset(preset.id, 'split-v')"
-              >
-                <Icon name="split-vertical" :size="13" />
-                <span>Split Vertical</span>
+              <button type="button" class="omp-btn" @click="launchWith(preset, 'split-v')">
+                <Icon name="split-vertical" :size="12" />
+                <span>Split right</span>
               </button>
-              <button
-                type="button"
-                class="omp-btn"
-                @click="launchPreset(preset.id, 'split-h')"
-              >
-                <Icon name="split-horizontal" :size="13" />
-                <span>Split Horizontal</span>
+              <button type="button" class="omp-btn" @click="launchWith(preset, 'split-h')">
+                <Icon name="split-horizontal" :size="12" />
+                <span>Split down</span>
               </button>
             </div>
-          </div>
+          </article>
         </div>
       </section>
     </main>
 
-    <div v-if="lightboxImage" class="omp-lightbox" @click="lightboxImage = null">
-      <div class="omp-lightbox-content" @click.stop>
-        <button
-          type="button"
-          class="omp-lightbox-close"
-          @click="lightboxImage = null"
-        >
-          <Icon name="x" :size="18" />
-        </button>
-        <img :src="lightboxImage" alt="Zoomed view" class="omp-lightbox-img" />
-      </div>
+    <div v-if="lightbox" class="omp-lightbox" role="dialog" aria-modal="true" @click="lightbox = null">
+      <button type="button" class="omp-lightbox__close" aria-label="Close image">
+        <Icon name="x" :size="18" />
+      </button>
+      <img :src="lightbox" alt="Attachment preview" @click.stop />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { PluginContext } from '../types/dinotty';
 import Icon from '../components/Icon.vue';
-import { findSessionFiles, getSession, type ParsedSession } from '../services/sessionResolver';
-import { loadAllSkills, filterSkills, injectSkillIntoActiveTerminal, type SkillItem } from '../services/skillService';
-import { discoverPresets, type PresetItem } from '../services/presetService';
-import { launchOmp } from '../services/tmuxLauncher';
+import type { IconName } from '../utils/icons';
+import {
+  listSessionFiles,
+  loadSession,
+  readPaneSession,
+  sessionDisplayName,
+  workspaceLabel,
+  type ParsedSession
+} from '../services/sessionResolver';
+import { filterSkills, injectSkill, loadAllSkills, type SkillItem } from '../services/skillService';
+import { discoverPresets, DEFAULT_PRESET_ID, type PresetItem } from '../services/presetService';
+import { getHostInfo, joinHostPath } from '../services/hostInfo';
+import { launchOmp, type LaunchTarget } from '../services/tmuxLauncher';
 
-const props = defineProps<{
-  api: PluginContext;
-}>();
+const props = defineProps<{ api: PluginContext }>();
 
-const currentTab = ref<'sessions' | 'skills' | 'presets'>('sessions');
+const version = '1.0.0';
+const skillCategories = ['all', 'verification', 'diagnostics', 'delivery', 'authoring', 'general'];
 
-const sessionFiles = ref<string[]>([]);
+const activeTab = ref<'sessions' | 'skills' | 'profiles'>('sessions');
+const sessionsRoot = ref('');
+const sessions = ref<Array<{ path: string; name: string; modified: number }>>([]);
+const sessionsLoading = ref(true);
 const sessionQuery = ref('');
-const selectedSessionPath = ref<string | null>(null);
-const activeSession = ref<ParsedSession | null>(null);
-const transcriptFilter = ref('');
-const expandedThinking = ref<Record<string, boolean>>({});
-const expandedTools = ref<Record<string, boolean>>({});
-const lightboxImage = ref<string | null>(null);
+const onlyCurrentWorkspace = ref(true);
+const selectedPath = ref('');
+const session = ref<ParsedSession | null>(null);
+const transcriptQuery = ref('');
+const lightbox = ref<string | null>(null);
 
 const skills = ref<SkillItem[]>([]);
-const skillSearchQuery = ref('');
-const selectedCategory = ref('all');
+const skillsLoading = ref(true);
+const skillQuery = ref('');
+const skillCategory = ref('all');
 const selectedSkill = ref<SkillItem | null>(null);
-const categories = ['all', 'verification', 'diagnostics', 'devops', 'workspaces', 'general'];
 
 const presets = ref<PresetItem[]>([]);
+const launchPresetId = ref(DEFAULT_PRESET_ID);
 
-const filteredSessionFiles = computed(() => {
-  const q = sessionQuery.value.trim().toLowerCase();
-  if (!q) return sessionFiles.value;
-  return sessionFiles.value.filter((f) => f.toLowerCase().includes(q));
+const tabs = computed(() => [
+  { id: 'sessions' as const, label: 'Sessions', icon: 'message-square' as IconName, badge: sessions.value.length },
+  { id: 'skills' as const, label: 'Skills', icon: 'book' as IconName, badge: skills.value.length },
+  { id: 'profiles' as const, label: 'Profiles', icon: 'zap' as IconName, badge: presets.value.length }
+]);
+
+const filteredSessions = computed(() => {
+  const needle = sessionQuery.value.trim().toLowerCase();
+  if (!needle) return sessions.value;
+  return sessions.value.filter((item) => item.path.toLowerCase().includes(needle));
 });
 
-const filteredMessages = computed(() => {
-  if (!activeSession.value) return [];
-  const q = transcriptFilter.value.trim().toLowerCase();
-  if (!q) return activeSession.value.messages;
-  return activeSession.value.messages.filter((m) => {
-    return m.text.toLowerCase().includes(q) || (m.thinking && m.thinking.toLowerCase().includes(q));
+const visibleMessages = computed(() => {
+  if (!session.value) return [];
+  const needle = transcriptQuery.value.trim().toLowerCase();
+  if (!needle) return session.value.messages;
+  return session.value.messages.filter((message) => {
+    if (message.text.toLowerCase().includes(needle)) return true;
+    if (message.thinking?.toLowerCase().includes(needle)) return true;
+    return (message.toolCalls || []).some((call) => call.name.toLowerCase().includes(needle));
   });
 });
 
-const filteredSkills = computed(() => {
-  return filterSkills(skills.value, skillSearchQuery.value, selectedCategory.value);
-});
+const filteredSkills = computed(() => filterSkills(skills.value, skillQuery.value, skillCategory.value));
 
-function extractSessionName(filePath: string): string {
-  const parts = filePath.replace(/\\/g, '/').split('/');
-  return parts[parts.length - 1] || filePath;
+const selectedPresetForLaunch = computed(
+  () => presets.value.find((item) => item.id === launchPresetId.value) || null
+);
+
+function displayName(filePath: string): string {
+  return sessionDisplayName(filePath);
 }
 
-function extractWorkspace(filePath: string): string {
-  const parts = filePath.replace(/\\/g, '/').split('/');
-  if (parts.length >= 2) {
-    return parts[parts.length - 2];
-  }
-  return 'Workspace';
+function workspaceOf(filePath: string): string {
+  return workspaceLabel(filePath);
 }
 
-function formatTime(ts: number): string {
-  if (!ts) return '';
-  return new Date(ts).toLocaleTimeString();
+function clockTime(value: number): string {
+  if (!value) return '';
+  return new Date(value).toLocaleTimeString();
 }
 
-function formatJson(val: unknown): string {
-  if (typeof val === 'string') return val;
+function relativeTime(value: number): string {
+  if (!value) return '';
+  const delta = Date.now() - value;
+  const minutes = Math.round(delta / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
+}
+
+function roleIcon(role: string): IconName {
+  if (role === 'user') return 'terminal';
+  if (role === 'assistant') return 'bot';
+  return 'code';
+}
+
+function roleLabel(role: string): string {
+  if (role === 'user') return 'You';
+  if (role === 'assistant') return 'Agent';
+  return 'Tool';
+}
+
+function pretty(value: unknown): string {
+  if (typeof value === 'string') return value;
   try {
-    return JSON.stringify(val, null, 2);
+    return JSON.stringify(value, null, 2);
   } catch {
-    return String(val);
+    return String(value);
   }
 }
 
-async function refreshSessions() {
-  const cwd = props.api.terminal.activeCwd() || '';
-  sessionFiles.value = await findSessionFiles(props.api.workspace, cwd);
-  if (sessionFiles.value.length > 0 && !selectedSessionPath.value) {
-    await selectSession(sessionFiles.value[0]);
+async function reloadSessions(): Promise<void> {
+  sessionsLoading.value = true;
+  try {
+    if (!sessionsRoot.value) {
+      const host = await getHostInfo(props.api);
+      sessionsRoot.value = host?.ompHome ? joinHostPath(host.ompHome, 'sessions') : '~/.omp/agent/sessions';
+    }
+
+    let slug: string | undefined;
+    if (onlyCurrentWorkspace.value) {
+      const pane = await readPaneSession(props.api);
+      if (pane.sessionFile) {
+        const parts = pane.sessionFile.replace(/\\/g, '/').split('/');
+        slug = parts[parts.length - 2];
+      }
+    }
+
+    sessions.value = await listSessionFiles(props.api, sessionsRoot.value, slug);
+    if (sessions.value.length && !sessions.value.some((item) => item.path === selectedPath.value)) {
+      await selectSession(sessions.value[0].path);
+    }
+  } finally {
+    sessionsLoading.value = false;
   }
 }
 
-async function selectSession(filePath: string) {
-  selectedSessionPath.value = filePath;
-  activeSession.value = await getSession(props.api.workspace, filePath);
+async function selectSession(filePath: string): Promise<void> {
+  selectedPath.value = filePath;
+  session.value = await loadSession(props.api, filePath);
 }
 
-function quickLaunchDefault() {
-  void launchOmp(props.api, { preset: 'default', target: 'new-tab' });
+async function reloadSkills(): Promise<void> {
+  skillsLoading.value = true;
+  try {
+    skills.value = await loadAllSkills(props.api, true);
+    if (!selectedSkill.value && skills.value.length) selectedSkill.value = skills.value[0];
+  } finally {
+    skillsLoading.value = false;
+  }
 }
 
-function resumeInTerminal() {
-  if (!activeSession.value) return;
-  void launchOmp(props.api, {
-    preset: 'default',
+function useSkill(name: string): void {
+  injectSkill(props.api, name);
+}
+
+async function launchWith(preset: PresetItem, target: LaunchTarget): Promise<void> {
+  await launchOmp(props.api, { preset, target });
+}
+
+async function launchTab(): Promise<void> {
+  await launchOmp(props.api, { preset: selectedPresetForLaunch.value, target: 'new-tab' });
+}
+
+async function resumeSession(): Promise<void> {
+  if (!session.value) return;
+  await launchOmp(props.api, {
+    preset: selectedPresetForLaunch.value,
     target: 'new-tab',
-    cwd: activeSession.value.cwd
+    cwd: session.value.cwd || undefined
   });
 }
 
-function copyTranscript() {
-  if (!activeSession.value) return;
-  const md = activeSession.value.messages
-    .map((m) => `### ${m.role.toUpperCase()}\n\n${m.text}\n`)
+async function copyTranscript(): Promise<void> {
+  if (!session.value) return;
+  const markdown = session.value.messages
+    .map((message) => `### ${roleLabel(message.role)}\n\n${message.text}\n`)
     .join('\n---\n\n');
-  void navigator.clipboard.writeText(md);
-  props.api.ui.notify('Transcript copied to clipboard', 'info');
-}
-
-function injectSkill(name: string) {
-  injectSkillIntoActiveTerminal(props.api, name);
-}
-
-function launchPreset(id: string, target: 'new-tab' | 'split-h' | 'split-v') {
-  void launchOmp(props.api, { preset: id, target });
+  try {
+    await navigator.clipboard.writeText(markdown);
+    props.api.ui.notify('Transcript copied to the clipboard', 'info');
+  } catch {
+    props.api.ui.notify('The browser refused clipboard access', 'warn');
+  }
 }
 
 onMounted(async () => {
-  await refreshSessions();
-  skills.value = await loadAllSkills(props.api.workspace);
-  if (skills.value.length > 0) {
-    selectedSkill.value = skills.value[0];
-  }
-  presets.value = await discoverPresets(props.api.workspace);
+  presets.value = await discoverPresets(props.api);
+  await reloadSessions();
+  await reloadSkills();
 });
 </script>
 
@@ -516,800 +491,737 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   background: var(--bg, #09090b);
   color: var(--fg, #e4e4e7);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  overflow: hidden;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
 }
 
-.omp-navbar {
+.omp-app__bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  background: color-mix(in srgb, var(--bg-elevated, #18181b) 95%, transparent);
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--border, #27272a);
+  background: color-mix(in srgb, var(--bg-elevated, #18181b) 96%, transparent);
 }
 
-.omp-brand {
+.omp-app__brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
 }
 
-.omp-brand-icon {
+.omp-app__brand-icon {
   color: var(--accent, #3b82f6);
 }
 
-.omp-brand-title {
+.omp-app__brand-name {
   font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
-.omp-brand-version {
-  font-size: 10px;
-  color: var(--fg-muted, #71717a);
-  background: var(--border, #27272a);
+.omp-app__version {
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: 999px;
+  background: var(--border, #27272a);
+  color: var(--fg-muted, #a1a1aa);
+  font-size: 10px;
 }
 
-.omp-nav-tabs {
+.omp-app__tabs {
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
 }
 
-.omp-nav-tab {
-  display: flex;
+.omp-app__tab {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 6px 11px;
   border: 1px solid transparent;
+  border-radius: 7px;
   background: transparent;
   color: var(--fg-muted, #a1a1aa);
-  border-radius: var(--radius, 6px);
-  font-size: 13px;
+  font-size: 12px;
+  white-space: nowrap;
   cursor: pointer;
-  transition: all 0.15s ease;
 }
 
-.omp-nav-tab:hover {
+.omp-app__tab:hover {
   color: var(--fg, #fafafa);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.omp-nav-tab.active {
+.omp-app__tab.is-active {
   color: #fff;
   background: var(--border, #27272a);
   border-color: rgba(255, 255, 255, 0.1);
 }
 
-.omp-tab-badge {
+.omp-app__badge {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #3b82f6) 28%, transparent);
+  color: var(--accent, #93c5fd);
   font-size: 10px;
-  background: color-mix(in srgb, var(--accent, #3b82f6) 25%, transparent);
-  color: var(--accent, #60a5fa);
-  padding: 1px 6px;
+}
+
+.omp-app__bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.omp-app__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.omp-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.omp-pane--skills,
+.omp-pane--profiles {
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.omp-sessions {
+  width: 272px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-right: 1px solid var(--border, #27272a);
+}
+
+.omp-sessions__head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.omp-sessions__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.omp-session {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 9px;
+  border: 1px solid var(--border, #27272a);
+  border-radius: 8px;
+  background: var(--bg-elevated, #18181b);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.omp-session:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.omp-session.is-active {
+  border-color: var(--accent, #3b82f6);
+  background: color-mix(in srgb, var(--accent, #3b82f6) 14%, transparent);
+}
+
+.omp-session__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.omp-session__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--fg-muted, #71717a);
+}
+
+.omp-transcript {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.omp-transcript__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border, #27272a);
+}
+
+.omp-transcript__meta,
+.omp-transcript__tools {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.omp-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--border, #27272a);
+  color: var(--fg-muted, #a1a1aa);
+  font-size: 11px;
+}
+
+.omp-tag--cost {
+  color: var(--accent, #93c5fd);
+  font-weight: 600;
+}
+
+.omp-banner {
+  margin: 10px 14px 0;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, #f59e0b 45%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+  color: #fcd34d;
+  font-size: 11px;
+}
+
+.omp-turns {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  scroll-behavior: smooth;
+}
+
+.omp-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 11px 13px;
+  border: 1px solid var(--border, #27272a);
+  border-left-width: 3px;
+  border-radius: 9px;
+  background: var(--bg-elevated, #18181b);
+}
+
+.omp-turn--user {
+  border-left-color: #3b82f6;
+}
+
+.omp-turn--assistant {
+  border-left-color: #10b981;
+}
+
+.omp-turn--toolResult {
+  border-left-color: #f59e0b;
+}
+
+.omp-turn__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.omp-turn__role {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.omp-turn__time {
+  font-size: 10px;
+  color: var(--fg-muted, #71717a);
+}
+
+.omp-turn__text {
+  margin: 0;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.omp-turn__images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.omp-thumb {
+  padding: 0;
+  border: 1px solid var(--border, #27272a);
+  border-radius: 8px;
+  background: none;
+  cursor: zoom-in;
+  overflow: hidden;
+}
+
+.omp-thumb img {
+  display: block;
+  max-width: 220px;
+  max-height: 150px;
+  object-fit: cover;
+}
+
+.omp-fold {
+  border: 1px solid var(--border, #27272a);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.omp-fold.is-error {
+  border-color: color-mix(in srgb, #ef4444 55%, transparent);
+}
+
+.omp-fold summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.omp-fold__name {
+  font-family: ui-monospace, Menlo, monospace;
+  font-weight: 600;
+  color: var(--accent, #93c5fd);
+}
+
+.omp-fold__intent {
+  color: var(--fg-muted, #71717a);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.omp-fold__state {
+  margin-left: auto;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted, #a1a1aa);
+}
+
+.omp-fold.is-error .omp-fold__state {
+  color: #fca5a5;
+}
+
+.omp-fold__label {
+  margin: 6px 9px 2px;
+  font-size: 10px;
+  color: var(--fg-muted, #71717a);
+}
+
+.omp-code {
+  margin: 0 9px 9px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #000;
+  color: #d4d4d8;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.omp-code--tall {
+  margin: 0;
+  max-height: none;
+  flex: 1;
+}
+
+.omp-skills__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.omp-skills__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 14px;
+}
+
+.omp-skills__grid {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 9px;
+  align-content: start;
+}
+
+.omp-skill {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border, #27272a);
+  border-radius: 9px;
+  background: var(--bg-elevated, #18181b);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.omp-skill:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.omp-skill.is-active {
+  border-color: var(--accent, #3b82f6);
+  background: color-mix(in srgb, var(--accent, #3b82f6) 10%, transparent);
+}
+
+.omp-skill__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.omp-skill__desc {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--fg-muted, #a1a1aa);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.omp-skill__tags {
+  display: flex;
+  gap: 5px;
+}
+
+.omp-skill-detail {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 13px;
+  border: 1px solid var(--border, #27272a);
   border-radius: 10px;
+  background: var(--bg-elevated, #18181b);
+  min-height: 0;
+}
+
+.omp-skill-detail header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.omp-skill-detail h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.omp-skill-detail__desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fg-muted, #a1a1aa);
+}
+
+.omp-profiles__head h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.omp-profiles__head p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fg-muted, #a1a1aa);
+}
+
+.omp-profiles__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(262px, 1fr));
+  gap: 12px;
+}
+
+.omp-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid var(--border, #27272a);
+  border-radius: 10px;
+  background: var(--bg-elevated, #18181b);
+}
+
+.omp-profile.is-default {
+  border-color: var(--accent, #3b82f6);
+}
+
+.omp-profile header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.omp-profile__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--accent, #3b82f6);
+}
+
+.omp-profile h3 {
+  margin: 0 0 2px;
+  font-size: 13px;
+}
+
+.omp-profile code {
+  font-size: 10px;
+  color: var(--fg-muted, #71717a);
+}
+
+.omp-profile__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .omp-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  background: var(--border, #27272a);
+  padding: 6px 11px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius, 6px);
+  border-radius: 7px;
+  background: var(--border, #27272a);
   color: var(--fg, #e4e4e7);
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
-  transition: all 0.12s ease;
 }
 
 .omp-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.11);
   color: #fff;
 }
 
-.omp-btn-primary {
+.omp-btn--primary {
+  border-color: transparent;
   background: var(--accent, #3b82f6);
   color: #fff;
-  border-color: transparent;
+  font-weight: 600;
 }
 
-.omp-btn-primary:hover {
+.omp-btn--primary:hover {
   background: #2563eb;
 }
 
-.omp-btn-sm {
-  padding: 4px 8px;
-  font-size: 11px;
-}
-
-.omp-content {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-}
-
-.omp-tab-pane {
-  flex: 1;
-  height: 100%;
-  display: flex;
-  overflow: hidden;
-}
-
-.omp-sessions-pane {
-  display: flex;
-}
-
-.omp-sessions-sidebar {
-  width: 280px;
-  border-right: 1px solid var(--border, #27272a);
-  display: flex;
-  flex-direction: column;
-  background: color-mix(in srgb, var(--bg, #09090b) 98%, transparent);
-}
-
-.omp-sidebar-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  border-bottom: 1px solid var(--border, #27272a);
-}
-
-.omp-input {
-  flex: 1;
-  background: var(--bg, #18181b);
-  border: 1px solid var(--border, #27272a);
-  border-radius: var(--radius, 4px);
-  padding: 5px 8px;
-  color: var(--fg, #fff);
-  font-size: 12px;
-  outline: none;
-}
-
-.omp-input:focus {
-  border-color: var(--accent, #3b82f6);
-}
-
 .omp-icon-btn {
-  background: transparent;
-  border: none;
-  color: var(--fg-muted, #71717a);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 6px;
+  border: 1px solid var(--border, #27272a);
+  border-radius: 7px;
+  background: var(--bg-elevated, #18181b);
+  color: var(--fg-muted, #a1a1aa);
+  cursor: pointer;
 }
 
 .omp-icon-btn:hover {
-  color: var(--fg, #fff);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.omp-sidebar-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.omp-session-card {
-  padding: 8px 10px;
-  background: var(--bg-elevated, #18181b);
-  border: 1px solid var(--border, #27272a);
-  border-radius: var(--radius, 6px);
-  cursor: pointer;
-  transition: all 0.12s ease;
-}
-
-.omp-session-card:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.omp-session-card.active {
-  border-color: var(--accent, #3b82f6);
-  background: color-mix(in srgb, var(--accent, #3b82f6) 12%, transparent);
-}
-
-.omp-session-card-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
-  font-size: 12px;
-}
-
-.omp-session-file-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.omp-session-card-sub {
-  margin-top: 4px;
-  font-size: 10px;
-  color: var(--fg-muted, #71717a);
-}
-
-.omp-transcript-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg, #09090b);
-  overflow: hidden;
-}
-
-.omp-transcript-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.omp-transcript-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border, #27272a);
-  background: color-mix(in srgb, var(--bg-elevated, #18181b) 95%, transparent);
-}
-
-.omp-header-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.omp-meta-badge {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  background: var(--border, #27272a);
-  border-radius: 4px;
-  font-size: 11px;
-  color: var(--fg-muted, #a1a1aa);
-}
-
-.omp-meta-cost {
-  color: var(--accent, #60a5fa);
-  font-weight: 600;
-}
-
-.omp-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.omp-search-box {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  background: var(--bg, #09090b);
-  border: 1px solid var(--border, #27272a);
-  border-radius: 4px;
-  color: var(--fg-muted, #71717a);
-}
-
-.omp-mini-input {
-  background: transparent;
-  border: none;
   color: #fff;
-  font-size: 11px;
-  outline: none;
-  width: 110px;
 }
 
-.omp-turns-stream {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.omp-icon-btn.is-busy {
+  opacity: 0.5;
 }
 
-.omp-turn-message {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
-  border-radius: var(--radius, 8px);
-  border: 1px solid var(--border, #27272a);
-  background: var(--bg-elevated, #18181b);
-}
-
-.omp-turn-message.user {
-  border-left: 3px solid #3b82f6;
-  background: color-mix(in srgb, #3b82f6 5%, var(--bg-elevated, #18181b));
-}
-
-.omp-turn-message.assistant {
-  border-left: 3px solid #10b981;
-}
-
-.omp-turn-message.toolResult {
-  border-left: 3px solid #f59e0b;
-}
-
-.omp-turn-author {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.omp-author-badge {
-  display: flex;
+.omp-field {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--fg, #fafafa);
-}
-
-.omp-turn-time {
-  font-size: 10px;
+  padding: 5px 8px;
+  border: 1px solid var(--border, #27272a);
+  border-radius: 7px;
+  background: var(--bg-elevated, #18181b);
   color: var(--fg-muted, #71717a);
 }
 
-.omp-thinking-card {
-  border: 1px dashed var(--border, #27272a);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 6px 8px;
+.omp-field--grow {
+  flex: 1;
 }
 
-.omp-thinking-toggle {
-  display: flex;
+.omp-field--search {
+  flex: 1;
+  min-width: 0;
+}
+
+.omp-field input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--fg, #fafafa);
+  font-size: 11px;
+}
+
+.omp-field--compact {
+  padding: 5px 8px;
+  color: var(--fg, #e4e4e7);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.omp-toggle {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: transparent;
-  border: none;
+  font-size: 11px;
+  color: var(--fg-muted, #a1a1aa);
+  cursor: pointer;
+}
+
+.omp-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.omp-chip {
+  padding: 3px 10px;
+  border: 1px solid var(--border, #27272a);
+  border-radius: 999px;
+  background: var(--bg-elevated, #18181b);
   color: var(--fg-muted, #a1a1aa);
   font-size: 11px;
+  text-transform: capitalize;
   cursor: pointer;
 }
 
-.omp-thinking-body {
-  margin-top: 6px;
-  padding: 8px;
-  background: #000;
-  border-radius: 4px;
-  font-family: ui-monospace, Menlo, monospace;
-  font-size: 11px;
-  color: #a1a1aa;
-  white-space: pre-wrap;
-  max-height: 200px;
-  overflow-y: auto;
+.omp-chip.is-active {
+  border-color: transparent;
+  background: var(--accent, #3b82f6);
+  color: #fff;
 }
 
-.omp-text-content {
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  margin: 0;
+.omp-chip--tiny {
+  padding: 1px 7px;
+  font-size: 9px;
+  cursor: default;
 }
 
-.omp-turn-images {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.omp-rendered-image {
-  max-width: 280px;
-  max-height: 180px;
-  border-radius: 6px;
-  border: 1px solid var(--border, #27272a);
-  cursor: pointer;
-  object-fit: cover;
-  transition: transform 0.12s ease;
-}
-
-.omp-rendered-image:hover {
-  transform: scale(1.02);
-}
-
-.omp-tools-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.omp-tool-card {
-  border: 1px solid var(--border, #27272a);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.25);
-  overflow: hidden;
-}
-
-.omp-tool-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 8px;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.omp-tool-header:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.omp-tool-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-}
-
-.omp-tool-name {
-  font-family: ui-monospace, Menlo, monospace;
-  font-weight: 600;
-  color: var(--accent, #60a5fa);
-}
-
-.omp-tool-intent {
-  color: var(--fg-muted, #71717a);
-  font-size: 11px;
-}
-
-.omp-tool-status {
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 4px;
-}
-
-.omp-tool-status.success {
-  background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
-}
-
-.omp-tool-status.error {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-}
-
-.omp-tool-details {
-  padding: 8px;
-  border-top: 1px solid var(--border, #27272a);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.omp-section-label {
-  font-size: 10px;
-  color: var(--fg-muted, #71717a);
-  margin-bottom: 2px;
-}
-
-.omp-code-snippet {
-  margin: 0;
-  padding: 6px 8px;
-  background: #000;
-  border-radius: 4px;
-  font-family: ui-monospace, Menlo, monospace;
-  font-size: 11px;
-  color: #d4d4d8;
-  white-space: pre-wrap;
-  max-height: 180px;
-  overflow-y: auto;
-}
-
-.omp-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--fg-muted, #71717a);
-  gap: 12px;
-}
-
-.omp-empty-hint {
+.omp-hint {
+  margin: 10px 0;
   font-size: 11px;
   color: var(--fg-muted, #71717a);
   text-align: center;
-  padding: 16px 0;
 }
 
-.omp-skills-pane {
-  flex-direction: column;
-  padding: 16px;
-  gap: 12px;
-}
-
-.omp-skills-toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.omp-search-large {
-  padding: 8px 12px;
-}
-
-.omp-search-large input {
-  font-size: 13px;
-}
-
-.omp-category-pills {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-}
-
-.omp-pill {
-  padding: 4px 10px;
-  background: var(--bg-elevated, #18181b);
-  border: 1px solid var(--border, #27272a);
-  border-radius: 12px;
-  color: var(--fg-muted, #a1a1aa);
-  font-size: 11px;
-  cursor: pointer;
-  text-transform: capitalize;
-}
-
-.omp-pill:hover {
-  color: #fff;
-}
-
-.omp-pill.active {
-  background: var(--accent, #3b82f6);
-  border-color: transparent;
-  color: #fff;
-}
-
-.omp-skills-layout {
+.omp-empty {
   flex: 1;
   display: flex;
-  gap: 16px;
-  overflow: hidden;
-}
-
-.omp-skills-grid {
-  flex: 1;
-  overflow-y: auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 10px;
-  align-content: start;
-}
-
-.omp-skill-card {
-  background: var(--bg-elevated, #18181b);
-  border: 1px solid var(--border, #27272a);
-  border-radius: var(--radius, 6px);
-  padding: 10px;
-  display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.12s ease;
-}
-
-.omp-skill-card:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.omp-skill-card.selected {
-  border-color: var(--accent, #3b82f6);
-  background: color-mix(in srgb, var(--accent, #3b82f6) 8%, transparent);
-}
-
-.omp-skill-card-top {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.omp-skill-name {
-  font-weight: 600;
-  font-size: 12px;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.omp-skill-category-badge {
-  font-size: 9px;
-  background: rgba(255, 255, 255, 0.06);
-  padding: 2px 5px;
-  border-radius: 4px;
-  color: var(--fg-muted, #71717a);
-  text-transform: uppercase;
-}
-
-.omp-skill-desc {
-  font-size: 11px;
-  color: var(--fg-muted, #a1a1aa);
-  line-height: 1.4;
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.omp-skill-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.omp-skill-preview {
-  width: 360px;
-  background: var(--bg-elevated, #18181b);
-  border: 1px solid var(--border, #27272a);
-  border-radius: var(--radius, 8px);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow: hidden;
-}
-
-.omp-preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.omp-preview-title-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.omp-preview-title-group h3 {
-  margin: 0;
-  font-size: 15px;
-}
-
-.omp-preview-desc {
-  font-size: 12px;
-  color: var(--fg-muted, #a1a1aa);
-  margin: 0;
-}
-
-.omp-preview-body {
-  flex: 1;
-  overflow-y: auto;
-  background: #000;
-  border-radius: 6px;
-  padding: 12px;
-  border: 1px solid var(--border, #27272a);
-}
-
-.omp-skill-body-text {
-  font-family: ui-monospace, Menlo, monospace;
-  font-size: 11px;
-  color: #d4d4d8;
-  white-space: pre-wrap;
-  margin: 0;
-}
-
-.omp-presets-pane {
-  flex-direction: column;
-  padding: 24px;
-  gap: 20px;
-  overflow-y: auto;
-}
-
-.omp-presets-header h2 {
-  margin: 0 0 6px 0;
-  font-size: 18px;
-}
-
-.omp-presets-header p {
-  margin: 0;
-  font-size: 13px;
-  color: var(--fg-muted, #a1a1aa);
-}
-
-.omp-presets-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-.omp-preset-card {
-  background: var(--bg-elevated, #18181b);
-  border: 1px solid var(--border, #27272a);
-  border-radius: var(--radius, 8px);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.omp-preset-card.is-default {
-  border-color: var(--accent, #3b82f6);
-  background: color-mix(in srgb, var(--accent, #3b82f6) 6%, var(--bg-elevated, #18181b));
-}
-
-.omp-preset-top {
-  display: flex;
-  gap: 12px;
-}
-
-.omp-preset-icon-wrap {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent, #3b82f6);
-}
-
-.omp-preset-title {
-  margin: 0 0 4px 0;
-  font-size: 14px;
-}
-
-.omp-preset-path {
-  font-size: 10px;
+  gap: 10px;
   color: var(--fg-muted, #71717a);
-  word-break: break-all;
-}
-
-.omp-preset-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  font-size: 12px;
 }
 
 .omp-lightbox {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  padding: 32px;
+  background: rgba(0, 0, 0, 0.88);
 }
 
-.omp-lightbox-content {
-  position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
+.omp-lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 10px;
 }
 
-.omp-lightbox-close {
+.omp-lightbox__close {
   position: absolute;
-  top: -36px;
-  right: 0;
-  background: transparent;
+  top: 16px;
+  right: 16px;
+  padding: 8px;
   border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
   cursor: pointer;
 }
 
-.omp-lightbox-img {
-  max-width: 100%;
-  max-height: 85vh;
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+@media (max-width: 860px) {
+  .omp-pane--sessions {
+    flex-direction: column;
+  }
+
+  .omp-sessions {
+    width: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border, #27272a);
+    max-height: 40%;
+  }
+
+  .omp-skills__body {
+    flex-direction: column;
+  }
+
+  .omp-skill-detail {
+    width: auto;
+    max-height: 45vh;
+  }
 }
 </style>

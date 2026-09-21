@@ -1,263 +1,287 @@
 <template>
-  <div class="omp-hud" :class="{ 'is-collapsed': isCollapsed, 'is-dragging': dragging }">
-    <div class="omp-hud-header">
-      <div class="omp-hud-title-group" data-drag-handle>
-        <Icon name="bot" :size="15" class="omp-hud-bot-icon" />
-        <span class="omp-hud-brand">OMP</span>
-        <span class="omp-hud-status-beacon" :class="sessionState.isRunning ? sessionState.status : 'inactive'"></span>
-        <span v-if="isCollapsed" class="omp-hud-collapsed-summary">
-          {{ sessionState.isRunning ? formatModel(sessionState.model) + ' · ' + formatTokens(sessionState.totalTokens) : 'Inactive' }}
-        </span>
+  <section
+    class="omp-hud"
+    :class="[`is-${pane.state}`, { 'is-collapsed': collapsed, 'is-dragging': dragging }]"
+    role="status"
+    aria-live="polite"
+  >
+    <header class="omp-hud__bar">
+      <div class="omp-hud__grip" data-drag-handle title="Drag to move">
+        <Icon name="bot" :size="15" class="omp-hud__logo" />
+        <span class="omp-hud__name">OMP</span>
+        <span class="omp-hud__beacon" :class="beaconClass" :title="statusLabel"></span>
+        <span v-if="collapsed" class="omp-hud__peek">{{ peekText }}</span>
       </div>
-      <div class="omp-hud-controls" @pointerdown.stop @mousedown.stop>
+
+      <div class="omp-hud__tools" @pointerdown.stop @mousedown.stop>
         <button
           type="button"
-          class="omp-hud-icon-btn"
-          :title="isCollapsed ? 'Expand HUD' : 'Collapse HUD'"
+          class="omp-hud__icon"
+          :title="collapsed ? 'Expand panel' : 'Collapse panel'"
+          :aria-expanded="!collapsed"
           @pointerdown.stop
           @mousedown.stop
-          @click.stop="isCollapsed = !isCollapsed"
+          @click.stop="collapsed = !collapsed"
         >
-          <Icon :name="isCollapsed ? 'chevron-down' : 'chevron-up'" :size="13" />
+          <Icon :name="collapsed ? 'chevron-down' : 'chevron-up'" :size="13" />
         </button>
       </div>
-    </div>
+    </header>
 
-    <div v-show="!isCollapsed" class="omp-hud-body">
-      <template v-if="sessionState.isRunning">
-        <div class="omp-hud-metric-row">
-          <div class="omp-hud-chip" :title="'Model: ' + sessionState.model">
-            <Icon name="terminal" :size="12" />
-            <span class="omp-hud-chip-text">{{ formatModel(sessionState.model) }}</span>
-          </div>
-          <div class="omp-hud-chip" :title="'Provider: ' + sessionState.provider">
+    <div v-show="!collapsed" class="omp-hud__body">
+      <template v-if="pane.state === 'running' && pane.summary">
+        <div class="omp-hud__row">
+          <span class="omp-hud__chip" :title="`Model: ${pane.summary.model}`">
             <Icon name="cpu" :size="12" />
-            <span class="omp-hud-chip-text">{{ sessionState.provider }}</span>
-          </div>
-        </div>
-
-        <div class="omp-hud-metric-row">
-          <div class="omp-hud-chip">
-            <Icon name="layers" :size="12" />
-            <span class="omp-hud-chip-text">{{ formatTokens(sessionState.totalTokens) }} tok</span>
-          </div>
-          <div class="omp-hud-chip omp-hud-chip-cost">
+            <span class="omp-hud__chip-text">{{ shortModel }}</span>
+          </span>
+          <span class="omp-hud__chip" :title="`Thinking level: ${pane.summary.thinkingLevel}`">
             <Icon name="zap" :size="12" />
-            <span class="omp-hud-chip-text">${{ sessionState.totalCost.toFixed(3) }}</span>
-          </div>
+            <span class="omp-hud__chip-text">{{ pane.summary.thinkingLevel }}</span>
+          </span>
         </div>
 
-        <div class="omp-hud-actions">
-          <button
-            type="button"
-            class="omp-hud-action-btn"
-            title="Open Visual Session Explorer"
-            @click="openExplorer"
-          >
-            <Icon name="history" :size="13" />
+        <div class="omp-hud__row">
+          <span class="omp-hud__chip" :title="`${pane.summary.totalTokens.toLocaleString()} context tokens`">
+            <Icon name="layers" :size="12" />
+            <span class="omp-hud__chip-text">{{ compactTokens }}</span>
+          </span>
+          <span class="omp-hud__chip is-cost" :title="`Session cost ${pane.summary.totalCost.toFixed(4)} USD`">
+            <Icon name="activity" :size="12" />
+            <span class="omp-hud__chip-text">{{ pane.summary.totalCost.toFixed(2) }} USD</span>
+          </span>
+        </div>
+
+        <p class="omp-hud__status">
+          <span class="omp-hud__status-dot" :class="beaconClass"></span>
+          {{ statusLabel }}
+          <span class="omp-hud__turns">{{ pane.summary.turns }} turns</span>
+        </p>
+
+        <div class="omp-hud__actions">
+          <button type="button" class="omp-hud__action" title="Open the session explorer" @click="openExplorer">
+            <Icon name="history" :size="14" />
             <span>Explorer</span>
           </button>
-
           <button
             type="button"
-            class="omp-hud-action-btn"
-            title="Toggle Tmux Copy-Mode (scroll up)"
-            @click="toggleCopy"
+            class="omp-hud__action"
+            :disabled="!tmuxAvailable"
+            :title="tmuxAvailable ? 'Enter tmux copy-mode to scroll history' : 'tmux was not found on this host'"
+            @click="copyMode"
           >
-            <Icon name="terminal" :size="13" />
-            <span>Copy-Mode</span>
+            <Icon name="terminal" :size="14" />
+            <span>Scroll</span>
           </button>
-
-          <button
-            type="button"
-            class="omp-hud-action-btn"
-            title="Split Pane with OMP"
-            @click="splitPane"
-          >
-            <Icon name="split-vertical" :size="13" />
+          <button type="button" class="omp-hud__action" title="Open a split pane running OMP" @click="split">
+            <Icon name="split-vertical" :size="14" />
             <span>Split</span>
           </button>
         </div>
       </template>
 
+      <template v-else-if="pane.state === 'starting'">
+        <div class="omp-hud__placeholder">
+          <span class="omp-hud__spinner" aria-hidden="true"></span>
+          <p class="omp-hud__placeholder-title">Starting OMP</p>
+          <p class="omp-hud__placeholder-note">Waiting for the first turn in {{ workspaceName }}</p>
+        </div>
+      </template>
+
       <template v-else>
-        <div class="omp-hud-inactive-view">
-          <span class="omp-hud-inactive-text">OMP is not active in this tab</span>
-          <div class="omp-hud-launch-group">
-            <select
-              v-model="selectedPreset"
-              class="omp-hud-select"
-              title="Select configuration preset"
-              @change="savePresetPref"
-            >
-              <option value="default">default (config.yml)</option>
-              <option v-for="p in presets" :key="p.id" :value="p.id">
-                {{ p.id }}
-              </option>
-            </select>
-            <button
-              type="button"
-              class="omp-hud-launch-btn"
-              title="Launch OMP in active pane with selected preset"
-              @click="launchWithSelected"
-            >
-              <Icon name="play" :size="12" />
-              <span>Launch</span>
-            </button>
-          </div>
+        <div class="omp-hud__placeholder">
+          <Icon name="info" :size="18" class="omp-hud__placeholder-icon" />
+          <p class="omp-hud__placeholder-title">No OMP session here</p>
+          <p class="omp-hud__placeholder-note">Pick a profile and start one in this pane.</p>
+        </div>
+
+        <div class="omp-hud__launch">
+          <label class="omp-hud__label" for="omp-hud-preset">Profile</label>
+          <select
+            id="omp-hud-preset"
+            v-model="selectedPresetId"
+            class="omp-hud__select"
+            :disabled="presetsLoading"
+            @change="rememberPreset"
+          >
+            <option v-for="preset in presets" :key="preset.id" :value="preset.id">
+              {{ preset.label }}
+            </option>
+          </select>
+          <button
+            type="button"
+            class="omp-hud__launch-btn"
+            :disabled="presetsLoading || launching"
+            title="Run OMP in the active pane"
+            @click="launchHere"
+          >
+            <Icon name="play" :size="12" />
+            <span>{{ launching ? 'Starting' : 'Launch' }}</span>
+          </button>
         </div>
       </template>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue';
-import type { PluginContext, Disposable } from '../types/dinotty';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import type { Disposable, PluginContext } from '../types/dinotty';
 import Icon from '../components/Icon.vue';
-import { resolveActiveSessionInfo, getSession } from '../services/sessionResolver';
-import { discoverPresets, type PresetItem } from '../services/presetService';
-import { toggleCopyMode, launchOmp } from '../services/tmuxLauncher';
+import { readPaneSession, type PaneSession } from '../services/sessionResolver';
+import { discoverPresets, DEFAULT_PRESET_ID, type PresetItem } from '../services/presetService';
+import { getHostInfo } from '../services/hostInfo';
+import { launchOmp, launchOmpInActivePane, toggleCopyMode } from '../services/tmuxLauncher';
 
-const props = defineProps<{
-  api: PluginContext;
-  dragging?: boolean;
-}>();
+const PRESET_STORAGE_KEY = 'dinotty-omp.preset';
+const POLL_INTERVAL_MS = 2000;
+const LAUNCH_GRACE_MS = 12000;
 
-const isCollapsed = ref(false);
+const props = defineProps<{ api: PluginContext; dragging?: boolean }>();
+
+const collapsed = ref(false);
+const launching = ref(false);
+const presetsLoading = ref(true);
+const tmuxAvailable = ref(true);
 const presets = ref<PresetItem[]>([]);
-const selectedPreset = ref('default');
+const selectedPresetId = ref(DEFAULT_PRESET_ID);
 
-const sessionState = ref({
-  model: '',
-  provider: '',
-  totalTokens: 0,
-  totalCost: 0,
-  status: 'idle' as 'idle' | 'thinking' | 'running_tool' | 'error',
-  isRunning: false
+const pane = ref<PaneSession>({
+  cwd: '',
+  sessionFile: '',
+  isRunning: false,
+  state: 'inactive',
+  summary: null
 });
 
-let refreshTimer: ReturnType<typeof setInterval> | null = null;
+let timer: ReturnType<typeof setInterval> | null = null;
+let launchDeadline = 0;
 const disposables: Disposable[] = [];
 
-function formatModel(name: string): string {
-  if (!name || name === 'unknown') return 'OMP';
-  const parts = name.split('/');
-  const leaf = parts[parts.length - 1];
-  return leaf.length > 16 ? leaf.slice(0, 15) + '..' : leaf;
-}
+const selectedPreset = computed(
+  () => presets.value.find((item) => item.id === selectedPresetId.value) || null
+);
 
-function formatTokens(count: number): string {
-  if (!count) return '0';
-  if (count >= 1000000) return (count / 1000000).toFixed(1) + 'm';
-  if (count >= 1000) return Math.round(count / 1000) + 'k';
-  return String(count);
-}
+const shortModel = computed(() => {
+  const model = pane.value.summary?.model || '';
+  const leaf = model.split('/').pop() || 'omp';
+  return leaf.length > 18 ? `${leaf.slice(0, 17)}...` : leaf;
+});
 
-function savePresetPref() {
+const compactTokens = computed(() => {
+  const value = pane.value.summary?.totalTokens || 0;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M tok`;
+  if (value >= 1_000) return `${Math.round(value / 1_000)}k tok`;
+  return `${value} tok`;
+});
+
+const statusLabel = computed(() => {
+  if (pane.value.state === 'inactive') return 'Inactive';
+  if (pane.value.state === 'starting') return 'Starting';
+  switch (pane.value.summary?.status) {
+    case 'running_tool':
+      return 'Running a tool';
+    case 'thinking':
+      return 'Thinking';
+    case 'error':
+      return 'Last tool failed';
+    default:
+      return 'Waiting for you';
+  }
+});
+
+const beaconClass = computed(() => {
+  if (pane.value.state === 'inactive') return 'is-inactive';
+  if (pane.value.state === 'starting') return 'is-starting';
+  return `is-${pane.value.summary?.status || 'idle'}`;
+});
+
+const workspaceName = computed(() => {
+  const cwd = pane.value.cwd;
+  if (!cwd) return 'this pane';
+  const segments = cwd.replace(/[\\/]+$/, '').split(/[\\/]/).filter(Boolean);
+  return segments[segments.length - 1] || cwd;
+});
+
+const peekText = computed(() => {
+  if (pane.value.state === 'inactive') return 'Inactive';
+  if (pane.value.state === 'starting') return 'Starting';
+  return `${shortModel.value} · ${pane.value.summary?.totalCost.toFixed(2) || '0.00'} USD`;
+});
+
+function rememberPreset(): void {
   try {
-    localStorage.setItem('dinotty:omp-last-preset', selectedPreset.value);
+    localStorage.setItem(PRESET_STORAGE_KEY, selectedPresetId.value);
   } catch {}
 }
 
-async function updateState() {
-  try {
-    const info = await resolveActiveSessionInfo(props.api);
-    if (info && info.sessionPath) {
-      if (info.summary) {
-        sessionState.value = {
-          model: info.summary.model,
-          provider: info.summary.provider,
-          totalTokens: info.summary.totalTokens,
-          totalCost: info.summary.totalCost,
-          status: info.summary.status,
-          isRunning: true
-        };
-        return;
-      }
+async function refresh(): Promise<void> {
+  const next = await readPaneSession(props.api);
 
-      const parsed = await getSession(props.api.workspace, info.sessionPath);
-      if (parsed) {
-        sessionState.value = {
-          model: parsed.model,
-          provider: parsed.provider,
-          totalTokens: parsed.totalTokens,
-          totalCost: parsed.totalCost,
-          status: parsed.status,
-          isRunning: true
-        };
-        return;
-      }
-    }
-
-    sessionState.value = {
-      model: '',
-      provider: '',
-      totalTokens: 0,
-      totalCost: 0,
-      status: 'idle',
-      isRunning: false
-    };
-  } catch {
-    sessionState.value.isRunning = false;
-  }
-}
-
-function openExplorer() {
-  props.api.open();
-}
-
-function toggleCopy() {
-  toggleCopyMode(props.api);
-}
-
-function splitPane() {
-  void launchOmp(props.api, { preset: selectedPreset.value, target: 'split-v' });
-}
-
-function launchWithSelected() {
-  const activePane = props.api.terminal.activePaneId();
-  if (!activePane) {
-    props.api.ui.notify('No active terminal pane', 'warn');
+  if (next.state === 'inactive' && launching.value && Date.now() < launchDeadline) {
+    pane.value = { ...next, state: 'starting' };
     return;
   }
 
-  savePresetPref();
-  const flag = selectedPreset.value === 'default'
-    ? ''
-    : ` --config=~/.omp/agent/config.${selectedPreset.value}.yml`;
-  props.api.terminal.send(activePane, `omp${flag}\n`);
-  props.api.ui.notify(`Launching OMP [${selectedPreset.value}]`, 'info');
+  if (next.state !== 'inactive') {
+    launching.value = false;
+  } else if (Date.now() >= launchDeadline) {
+    launching.value = false;
+  }
+
+  pane.value = next;
+}
+
+function openExplorer(): void {
+  props.api.open();
+}
+
+async function copyMode(): Promise<void> {
+  await toggleCopyMode(props.api);
+}
+
+async function split(): Promise<void> {
+  await launchOmp(props.api, { preset: selectedPreset.value, target: 'split-v' });
+}
+
+async function launchHere(): Promise<void> {
+  const started = await launchOmpInActivePane(props.api, selectedPreset.value);
+  if (!started) return;
+  rememberPreset();
+  launching.value = true;
+  launchDeadline = Date.now() + LAUNCH_GRACE_MS;
+  pane.value = { ...pane.value, state: 'starting', summary: null };
+  window.setTimeout(() => void refresh(), 600);
 }
 
 onMounted(async () => {
   try {
-    const saved = localStorage.getItem('dinotty:omp-last-preset');
-    if (saved) selectedPreset.value = saved;
+    const stored = localStorage.getItem(PRESET_STORAGE_KEY);
+    if (stored) selectedPresetId.value = stored;
   } catch {}
 
-  try {
-    const discovered = await discoverPresets(props.api.workspace);
-    presets.value = discovered.filter((p) => !p.isDefault);
-  } catch {}
+  const host = await getHostInfo(props.api);
+  tmuxAvailable.value = host ? host.tmux : true;
 
-  void updateState();
-  refreshTimer = setInterval(updateState, 2000);
+  presets.value = await discoverPresets(props.api);
+  if (!presets.value.some((item) => item.id === selectedPresetId.value)) {
+    selectedPresetId.value = DEFAULT_PRESET_ID;
+  }
+  presetsLoading.value = false;
 
-  if (props.api.terminal.onDidChangeActivePane) {
-    disposables.push(
-      props.api.terminal.onDidChangeActivePane(() => {
-        void updateState();
-      })
-    );
+  await refresh();
+  timer = setInterval(() => void refresh(), POLL_INTERVAL_MS);
+
+  if (typeof props.api.terminal.onDidChangeActivePane === 'function') {
+    disposables.push(props.api.terminal.onDidChangeActivePane(() => void refresh()));
   }
 });
 
 onBeforeUnmount(() => {
-  if (refreshTimer) clearInterval(refreshTimer);
-  for (const d of disposables) {
+  if (timer) clearInterval(timer);
+  for (const item of disposables) {
     try {
-      d.dispose();
+      item.dispose();
     } catch {}
   }
 });
@@ -265,274 +289,329 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .omp-hud {
-  width: 230px;
-  background: color-mix(in srgb, var(--bg-elevated, #18181b) 92%, transparent);
-  backdrop-filter: blur(8px);
+  width: 244px;
   border: 1px solid var(--border, #27272a);
-  border-radius: var(--radius, 8px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  border-radius: var(--radius, 10px);
+  background: color-mix(in srgb, var(--bg-elevated, #18181b) 94%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.42);
   color: var(--fg, #e4e4e7);
   font-size: 12px;
+  line-height: 1.45;
   user-select: none;
   overflow: hidden;
-  transition: width 0.15s ease, opacity 0.15s ease;
-}
-
-.omp-hud.is-dragging {
-  border-color: var(--accent, #3b82f6);
-  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.3);
 }
 
 .omp-hud.is-collapsed {
   width: auto;
-  min-width: 170px;
-  max-width: 260px;
+  min-width: 168px;
+  max-width: 264px;
 }
 
-.omp-hud.is-collapsed .omp-hud-body {
-  display: none !important;
+.omp-hud.is-dragging {
+  border-color: var(--accent, #3b82f6);
 }
 
-.omp-hud-header {
+.omp-hud__bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 8px;
-  background: color-mix(in srgb, var(--bg, #09090b) 60%, transparent);
+  gap: 6px;
+  padding: 7px 8px;
   border-bottom: 1px solid var(--border, #27272a);
+  background: color-mix(in srgb, var(--bg, #09090b) 55%, transparent);
 }
 
-.omp-hud.is-collapsed .omp-hud-header {
+.omp-hud.is-collapsed .omp-hud__bar {
   border-bottom: none;
 }
 
-.omp-hud-title-group {
+.omp-hud__grip {
   display: flex;
   align-items: center;
   gap: 6px;
   flex: 1;
+  min-width: 0;
   cursor: grab;
   touch-action: none;
 }
 
-.omp-hud-title-group:active {
+.omp-hud__grip:active {
   cursor: grabbing;
 }
 
-.omp-hud-collapsed-summary {
+.omp-hud__logo {
+  color: var(--accent, #3b82f6);
+  flex-shrink: 0;
+}
+
+.omp-hud__name {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.omp-hud__peek {
   font-size: 10px;
   color: var(--fg-muted, #a1a1aa);
-  margin-left: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.omp-hud-bot-icon {
-  color: var(--accent, #3b82f6);
-}
-
-.omp-hud-brand {
-  font-weight: 700;
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  color: var(--fg, #f4f4f5);
-}
-
-.omp-hud-status-beacon {
+.omp-hud__beacon,
+.omp-hud__status-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
+  flex-shrink: 0;
   display: inline-block;
+  background: #52525b;
 }
 
-.omp-hud-status-beacon.idle {
+.omp-hud__beacon.is-idle,
+.omp-hud__status-dot.is-idle {
   background: #3b82f6;
-  box-shadow: 0 0 6px rgba(59, 130, 246, 0.7);
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.65);
 }
 
-.omp-hud-status-beacon.thinking {
+.omp-hud__beacon.is-thinking,
+.omp-hud__status-dot.is-thinking {
   background: #10b981;
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.9);
-  animation: omp-beacon-pulse 1.2s infinite ease-in-out;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.75);
+  animation: omp-pulse 1.4s ease-in-out infinite;
 }
 
-.omp-hud-status-beacon.running_tool {
+.omp-hud__beacon.is-running_tool,
+.omp-hud__status-dot.is-running_tool {
   background: #f59e0b;
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.9);
-  animation: omp-beacon-pulse 0.8s infinite ease-in-out;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.75);
+  animation: omp-pulse 0.9s ease-in-out infinite;
 }
 
-.omp-hud-status-beacon.error {
+.omp-hud__beacon.is-error,
+.omp-hud__status-dot.is-error {
   background: #ef4444;
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.9);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.75);
 }
 
-.omp-hud-status-beacon.inactive {
-  background: #71717a;
-  opacity: 0.6;
+.omp-hud__beacon.is-starting,
+.omp-hud__status-dot.is-starting {
+  background: #a78bfa;
+  animation: omp-pulse 1.1s ease-in-out infinite;
 }
 
-@keyframes omp-beacon-pulse {
-  0%, 100% {
+.omp-hud__beacon.is-inactive,
+.omp-hud__status-dot.is-inactive {
+  background: #52525b;
+}
+
+@keyframes omp-pulse {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
   50% {
-    transform: scale(1.35);
-    opacity: 0.65;
+    transform: scale(1.4);
+    opacity: 0.6;
   }
 }
 
-.omp-hud-controls {
+.omp-hud__tools {
   display: flex;
   align-items: center;
-  gap: 4px;
   pointer-events: auto;
 }
 
-.omp-hud-icon-btn {
-  background: transparent;
-  border: none;
-  color: var(--fg-muted, #71717a);
-  cursor: pointer;
-  padding: 3px;
-  border-radius: 4px;
-  display: flex;
+.omp-hud__icon {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  pointer-events: auto;
+  padding: 4px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--fg-muted, #71717a);
+  cursor: pointer;
 }
 
-.omp-hud-icon-btn:hover {
+.omp-hud__icon:hover {
   color: var(--fg, #fafafa);
   background: rgba(255, 255, 255, 0.12);
 }
 
-.omp-hud-body {
-  padding: 8px;
+.omp-hud__body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
+  padding: 9px;
 }
 
-.omp-hud-metric-row {
+.omp-hud__row {
   display: flex;
   gap: 6px;
 }
 
-.omp-hud-chip {
+.omp-hud__chip {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 6px;
-  background: var(--bg, #18181b);
+  gap: 5px;
+  padding: 4px 7px;
   border: 1px solid var(--border, #27272a);
-  border-radius: 4px;
+  border-radius: 6px;
+  background: var(--bg, #09090b);
   color: var(--fg-muted, #a1a1aa);
   font-size: 10px;
-  overflow: hidden;
 }
 
-.omp-hud-chip-text {
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-
-.omp-hud-chip-cost {
+.omp-hud__chip.is-cost {
   color: var(--accent, #60a5fa);
   font-weight: 600;
 }
 
-.omp-hud-actions {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  margin-top: 2px;
-}
-
-.omp-hud-action-btn {
-  background: var(--bg, #18181b);
-  border: 1px solid var(--border, #27272a);
-  border-radius: 4px;
-  color: var(--fg, #e4e4e7);
-  padding: 5px 4px;
-  font-size: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  cursor: pointer;
-  transition: all 0.12s ease;
-}
-
-.omp-hud-action-btn:hover {
-  background: color-mix(in srgb, var(--accent, #3b82f6) 18%, transparent);
-  border-color: var(--accent, #3b82f6);
-  color: #fff;
-}
-
-.omp-hud-inactive-view {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  padding: 4px 2px;
-}
-
-.omp-hud-inactive-text {
-  font-size: 11px;
-  color: var(--fg-muted, #a1a1aa);
-  text-align: center;
-}
-
-.omp-hud-launch-group {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.omp-hud-select {
-  flex: 1;
-  background: var(--bg, #18181b);
-  border: 1px solid var(--border, #27272a);
-  border-radius: 4px;
-  color: var(--fg, #e4e4e7);
-  padding: 4px 6px;
-  font-size: 10px;
-  outline: none;
-  cursor: pointer;
-  min-width: 0;
-  max-width: 145px;
+.omp-hud__chip-text {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.omp-hud-select:focus {
-  border-color: var(--accent, #3b82f6);
+.omp-hud__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 10px;
+  color: var(--fg-muted, #a1a1aa);
 }
 
-.omp-hud-launch-btn {
+.omp-hud__turns {
+  margin-left: auto;
+  opacity: 0.75;
+}
+
+.omp-hud__actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.omp-hud__action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px;
+  border: 1px solid var(--border, #27272a);
+  border-radius: 6px;
+  background: var(--bg, #09090b);
+  color: var(--fg, #e4e4e7);
+  font-size: 10px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.omp-hud__action:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent, #3b82f6) 20%, transparent);
+  border-color: var(--accent, #3b82f6);
+  color: #fff;
+}
+
+.omp-hud__action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.omp-hud__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 2px 2px;
+  text-align: center;
+}
+
+.omp-hud__placeholder-icon {
+  color: var(--fg-muted, #71717a);
+}
+
+.omp-hud__placeholder-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.omp-hud__placeholder-note {
+  margin: 0;
+  font-size: 10px;
+  color: var(--fg-muted, #71717a);
+}
+
+.omp-hud__spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border, #3f3f46);
+  border-top-color: var(--accent, #3b82f6);
+  animation: omp-spin 0.8s linear infinite;
+}
+
+@keyframes omp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.omp-hud__launch {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.omp-hud__label {
+  font-size: 10px;
+  color: var(--fg-muted, #71717a);
+}
+
+.omp-hud__select {
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--border, #27272a);
+  border-radius: 6px;
+  background: var(--bg, #09090b);
+  color: var(--fg, #e4e4e7);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.omp-hud__select:focus-visible {
+  outline: 2px solid var(--accent, #3b82f6);
+  outline-offset: 1px;
+}
+
+.omp-hud__launch-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 4px;
-  padding: 5px 10px;
-  background: var(--accent, #3b82f6);
+  padding: 5px 9px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
+  background: var(--accent, #3b82f6);
   color: #fff;
   font-size: 10px;
   font-weight: 600;
   cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.12s ease;
 }
 
-.omp-hud-launch-btn:hover {
+.omp-hud__launch-btn:hover:not(:disabled) {
   background: #2563eb;
+}
+
+.omp-hud__launch-btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
 }
 </style>
