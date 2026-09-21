@@ -16,6 +16,17 @@ export function createOmpMonitorSeries(ctx: PluginContext): MonitorSeries {
       const info = await resolveActiveSessionInfo(ctx);
       if (info && info.sessionPath) {
         activeCwd = info.cwd;
+        if (info.summary) {
+          activeModel = info.summary.model;
+          activeProvider = info.summary.provider;
+          totalTokens = info.summary.totalTokens;
+          totalCost = info.summary.totalCost;
+          status = info.summary.status;
+          activeSessionId = info.sessionPath.split('/').pop() || '';
+          isRunning = true;
+          return;
+        }
+
         const parsed = await getSession(ctx.workspace, info.sessionPath);
         if (parsed) {
           activeModel = parsed.model;

@@ -57,6 +57,19 @@ export interface ParsedSession extends SessionSummary {
   messages: TurnMessageItem[];
 }
 
+export interface ActiveSessionResult {
+  cwd: string;
+  sessionPath: string;
+  summary?: {
+    model: string;
+    provider: string;
+    thinkingLevel: string;
+    totalTokens: number;
+    totalCost: number;
+    status: 'idle' | 'thinking' | 'running_tool' | 'error';
+  } | null;
+}
+
 const sessionCache = new Map<string, { mtime: number; data: ParsedSession }>();
 
 export function encodeCwdToSessionDir(cwd: string): string {
@@ -71,7 +84,7 @@ export function encodeCwdToSessionDir(cwd: string): string {
 
 export async function resolveActiveSessionInfo(
   ctx: PluginContext
-): Promise<{ cwd: string; sessionPath: string } | null> {
+): Promise<ActiveSessionResult | null> {
   const activePaneId = ctx.terminal.activePaneId() || '';
   try {
     const res = await ctx.exec.run(['pane', activePaneId]);
@@ -82,7 +95,8 @@ export async function resolveActiveSessionInfo(
       }
       return {
         cwd: parsed.cwd || '',
-        sessionPath: parsed.sessionFile
+        sessionPath: parsed.sessionFile,
+        summary: parsed.summary || null
       };
     }
   } catch {}

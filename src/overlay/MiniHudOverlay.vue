@@ -164,6 +164,18 @@ async function updateState() {
   try {
     const info = await resolveActiveSessionInfo(props.api);
     if (info && info.sessionPath) {
+      if (info.summary) {
+        sessionState.value = {
+          model: info.summary.model,
+          provider: info.summary.provider,
+          totalTokens: info.summary.totalTokens,
+          totalCost: info.summary.totalCost,
+          status: info.summary.status,
+          isRunning: true
+        };
+        return;
+      }
+
       const parsed = await getSession(props.api.workspace, info.sessionPath);
       if (parsed) {
         sessionState.value = {

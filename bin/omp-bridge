@@ -17,6 +17,87 @@ function safeExec(cmd) {
   }
 }
 
+function parseSessionSummary(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) return null;
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const lines = content.split('\n');
+
+    let model = 'unknown';
+    let provider = 'unknown';
+    let thinkingLevel = 'auto';
+    let totalTokens = 0;
+    let totalCost = 0;
+    let status = 'idle';
+    const pendingCalls = new Set();
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const obj = JSON.parse(line);
+        if (obj.type === 'model_change') {
+          if (obj.model) model = String(obj.model);
+          if (obj.provider) provider = String(obj.provider);
+          if (obj.thinkingLevel) thinkingLevel = String(obj.thinkingLevel);
+        } else if (obj.type === 'message') {
+          const msg = obj.message || {};
+          if (msg.model) model = String(msg.model);
+          if (msg.provider) provider = String(msg.provider);
+
+          if (msg.usage) {
+            if (typeof msg.usage.totalTokens === 'number') {
+              totalTokens = msg.usage.totalTokens;
+            }
+            if (msg.usage.cost && typeof msg.usage.cost.total === 'number') {
+              totalCost += msg.usage.cost.total;
+            }
+          }
+
+          if (msg.role === 'assistant') {
+            let hasCalls = false;
+            if (Array.isArray(msg.content)) {
+              for (const p of msg.content) {
+                if (p.type === 'toolCall' && p.id) {
+                  hasCalls = true;
+                  pendingCalls.add(p.id);
+                }
+              }
+            }
+            if (!hasCalls && pendingCalls.size === 0) {
+              status = 'idle';
+            }
+          } else if (msg.role === 'user') {
+            status = 'thinking';
+          } else if (msg.role === 'toolResult') {
+            if (msg.toolCallId) pendingCalls.delete(msg.toolCallId);
+            if (pendingCalls.size === 0) {
+              status = 'idle';
+            }
+          }
+        } else if (obj.type === 'custom' && obj.customType === 'tool_execution_start') {
+          status = 'running_tool';
+          if (obj.data?.toolCallId) pendingCalls.add(obj.data.toolCallId);
+        } else if (obj.type === 'custom' && obj.customType === 'session_exit') {
+          status = 'idle';
+          pendingCalls.clear();
+        }
+      } catch {}
+    }
+
+    return {
+      model,
+      provider,
+      thinkingLevel,
+      totalTokens,
+      totalCost,
+      status: pendingCalls.size > 0 ? 'running_tool' : status
+    };
+  } catch {
+    return null;
+  }
+}
+
 function resolveByPane(targetPane) {
   let targetCwd = '';
   let sessionFile = '';
@@ -41,14 +122,12 @@ function resolveByPane(targetPane) {
                   const pInfo = safeExec(`tmux list-panes -t "${sName}" -F '#{pane_current_command}|#{pane_current_path}'`).split('\n')[0] || '';
                   const [cmd, pPath] = pInfo.split('|');
                   targetCwd = pPath || '';
-                  if (cmd === 'omp' || safeExec(`pgrep -f "omp.*--config" || pgrep -x omp`).length > 0) {
-                    const ompPid = safeExec(`tmux list-panes -t "${sName}" -F '#{pane_pid}'`);
-                    if (ompPid) {
-                      const childOmp = safeExec(`pgrep -P "${ompPid}" -f omp || true`).trim();
-                      if (childOmp || cmd === 'omp') {
-                        isRunning = true;
-                      }
-                    }
+                  const ompPid = safeExec(`tmux list-panes -t "${sName}" -F '#{pane_pid}'`);
+                  if (cmd === 'omp') {
+                    isRunning = true;
+                  } else if (ompPid) {
+                    const childOmp = safeExec(`pgrep -P "${ompPid}" -f omp || true`).trim();
+                    if (childOmp) isRunning = true;
                   }
                   break;
                 }
@@ -97,10 +176,13 @@ function resolveByPane(targetPane) {
     }
   }
 
+  const summary = isRunning && sessionFile ? parseSessionSummary(sessionFile) : null;
+
   const result = {
     cwd: targetCwd || homeDir,
     sessionFile: sessionFile || '',
-    isRunning: isRunning
+    isRunning: isRunning,
+    summary
   };
   process.stdout.write(JSON.stringify(result) + '\n');
 }
