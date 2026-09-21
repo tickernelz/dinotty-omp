@@ -2,13 +2,14 @@ import type { MonitorSeries, MonitorSeriesDetailRow, PluginContext } from '../ty
 import { resolveActiveSessionInfo, getSession } from './sessionResolver';
 
 export function createOmpMonitorSeries(ctx: PluginContext): MonitorSeries {
-  let activeModel = 'gemini-3.8-flash';
-  let activeProvider = 'sub2api-agy';
+  let activeModel = '';
+  let activeProvider = '';
   let totalTokens = 0;
   let totalCost = 0;
   let status = 'idle';
   let activeSessionId = '';
   let activeCwd = '';
+  let isRunning = false;
 
   async function poll() {
     try {
@@ -23,9 +24,14 @@ export function createOmpMonitorSeries(ctx: PluginContext): MonitorSeries {
           totalCost = parsed.totalCost;
           status = parsed.status;
           activeSessionId = parsed.sessionId;
+          isRunning = true;
+          return;
         }
       }
-    } catch {}
+      isRunning = false;
+    } catch {
+      isRunning = false;
+    }
   }
 
   void poll();
@@ -43,15 +49,19 @@ export function createOmpMonitorSeries(ctx: PluginContext): MonitorSeries {
     statusIcon: 'Zap',
     defaultVisible: true,
     current: () => {
-      return totalCost;
+      return isRunning ? totalCost : 0;
     },
     statusText: () => {
+      if (!isRunning) return null;
       const shortModel = activeModel.split('/').pop() || 'omp';
       const cleanModel = shortModel.length > 14 ? shortModel.slice(0, 13) + '..' : shortModel;
       const formattedCost = totalCost > 0 ? `$${totalCost.toFixed(2)}` : '$0.00';
       return `OMP: ${cleanModel} · ${formattedCost}`;
     },
     detail: (): MonitorSeriesDetailRow[] => {
+      if (!isRunning) {
+        return [{ label: 'Status', value: 'Inactive in this tab' }];
+      }
       return [
         { label: 'Agent Model', value: activeModel },
         { label: 'Provider', value: activeProvider },

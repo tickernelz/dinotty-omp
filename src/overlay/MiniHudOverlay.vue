@@ -4,9 +4,9 @@
       <div class="omp-hud-title-group" data-drag-handle>
         <Icon name="bot" :size="15" class="omp-hud-bot-icon" />
         <span class="omp-hud-brand">OMP</span>
-        <span class="omp-hud-status-beacon" :class="sessionState.status"></span>
+        <span class="omp-hud-status-beacon" :class="sessionState.isRunning ? sessionState.status : 'inactive'"></span>
         <span v-if="isCollapsed" class="omp-hud-collapsed-summary">
-          {{ formatModel(sessionState.model) }} · {{ formatTokens(sessionState.totalTokens) }}
+          {{ sessionState.isRunning ? formatModel(sessionState.model) + ' · ' + formatTokens(sessionState.totalTokens) : 'Inactive' }}
         </span>
       </div>
       <div class="omp-hud-controls" @pointerdown.stop @mousedown.stop>
@@ -24,59 +24,75 @@
     </div>
 
     <div v-show="!isCollapsed" class="omp-hud-body">
-      <div class="omp-hud-metric-row">
-        <div class="omp-hud-chip" :title="'Model: ' + sessionState.model">
-          <Icon name="terminal" :size="12" />
-          <span class="omp-hud-chip-text">{{ formatModel(sessionState.model) }}</span>
+      <template v-if="sessionState.isRunning">
+        <div class="omp-hud-metric-row">
+          <div class="omp-hud-chip" :title="'Model: ' + sessionState.model">
+            <Icon name="terminal" :size="12" />
+            <span class="omp-hud-chip-text">{{ formatModel(sessionState.model) }}</span>
+          </div>
+          <div class="omp-hud-chip" :title="'Provider: ' + sessionState.provider">
+            <Icon name="cpu" :size="12" />
+            <span class="omp-hud-chip-text">{{ sessionState.provider }}</span>
+          </div>
         </div>
-        <div class="omp-hud-chip" :title="'Provider: ' + sessionState.provider">
-          <Icon name="cpu" :size="12" />
-          <span class="omp-hud-chip-text">{{ sessionState.provider }}</span>
+
+        <div class="omp-hud-metric-row">
+          <div class="omp-hud-chip">
+            <Icon name="layers" :size="12" />
+            <span class="omp-hud-chip-text">{{ formatTokens(sessionState.totalTokens) }} tok</span>
+          </div>
+          <div class="omp-hud-chip omp-hud-chip-cost">
+            <Icon name="zap" :size="12" />
+            <span class="omp-hud-chip-text">${{ sessionState.totalCost.toFixed(3) }}</span>
+          </div>
         </div>
-      </div>
 
-      <div class="omp-hud-metric-row">
-        <div class="omp-hud-chip">
-          <Icon name="layers" :size="12" />
-          <span class="omp-hud-chip-text">{{ formatTokens(sessionState.totalTokens) }} tok</span>
+        <div class="omp-hud-actions">
+          <button
+            type="button"
+            class="omp-hud-action-btn"
+            title="Open Visual Session Explorer"
+            @click="openExplorer"
+          >
+            <Icon name="history" :size="13" />
+            <span>Explorer</span>
+          </button>
+
+          <button
+            type="button"
+            class="omp-hud-action-btn"
+            title="Toggle Tmux Copy-Mode (scroll up)"
+            @click="toggleCopy"
+          >
+            <Icon name="terminal" :size="13" />
+            <span>Copy-Mode</span>
+          </button>
+
+          <button
+            type="button"
+            class="omp-hud-action-btn"
+            title="Split Pane with OMP"
+            @click="splitPane"
+          >
+            <Icon name="split-vertical" :size="13" />
+            <span>Split</span>
+          </button>
         </div>
-        <div class="omp-hud-chip omp-hud-chip-cost">
-          <Icon name="zap" :size="12" />
-          <span class="omp-hud-chip-text">${{ sessionState.totalCost.toFixed(3) }}</span>
+      </template>
+
+      <template v-else>
+        <div class="omp-hud-inactive-view">
+          <span class="omp-hud-inactive-text">OMP is not active in this tab</span>
+          <button
+            type="button"
+            class="omp-hud-launch-btn"
+            @click="launchHere"
+          >
+            <Icon name="play" :size="12" />
+            <span>Launch OMP</span>
+          </button>
         </div>
-      </div>
-
-      <div class="omp-hud-actions">
-        <button
-          type="button"
-          class="omp-hud-action-btn"
-          title="Open Visual Session Explorer"
-          @click="openExplorer"
-        >
-          <Icon name="history" :size="13" />
-          <span>Explorer</span>
-        </button>
-
-        <button
-          type="button"
-          class="omp-hud-action-btn"
-          title="Toggle Tmux Copy-Mode (scroll up)"
-          @click="toggleCopy"
-        >
-          <Icon name="terminal" :size="13" />
-          <span>Copy-Mode</span>
-        </button>
-
-        <button
-          type="button"
-          class="omp-hud-action-btn"
-          title="Split Pane with OMP"
-          @click="splitPane"
-        >
-          <Icon name="split-vertical" :size="13" />
-          <span>Split</span>
-        </button>
-      </div>
+      </template>
     </div>
   </div>
 </template>
@@ -95,18 +111,19 @@ const props = defineProps<{
 
 const isCollapsed = ref(false);
 const sessionState = ref({
-  model: 'gemini-3.8-flash',
-  provider: 'sub2api-agy',
+  model: '',
+  provider: '',
   totalTokens: 0,
   totalCost: 0,
-  status: 'idle' as 'idle' | 'thinking' | 'running_tool' | 'error'
+  status: 'idle' as 'idle' | 'thinking' | 'running_tool' | 'error',
+  isRunning: false
 });
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 const disposables: Disposable[] = [];
 
 function formatModel(name: string): string {
-  if (!name || name === 'unknown') return 'OMP Agent';
+  if (!name || name === 'unknown') return 'OMP';
   const parts = name.split('/');
   const leaf = parts[parts.length - 1];
   return leaf.length > 16 ? leaf.slice(0, 15) + '..' : leaf;
@@ -130,11 +147,24 @@ async function updateState() {
           provider: parsed.provider,
           totalTokens: parsed.totalTokens,
           totalCost: parsed.totalCost,
-          status: parsed.status
+          status: parsed.status,
+          isRunning: true
         };
+        return;
       }
     }
-  } catch {}
+
+    sessionState.value = {
+      model: '',
+      provider: '',
+      totalTokens: 0,
+      totalCost: 0,
+      status: 'idle',
+      isRunning: false
+    };
+  } catch {
+    sessionState.value.isRunning = false;
+  }
 }
 
 function openExplorer() {
@@ -147,6 +177,13 @@ function toggleCopy() {
 
 function splitPane() {
   void launchOmp(props.api, { target: 'split-v' });
+}
+
+function launchHere() {
+  const activePane = props.api.terminal.activePaneId();
+  if (activePane) {
+    props.api.terminal.send(activePane, 'omp\n');
+  }
 }
 
 onMounted(() => {
@@ -277,6 +314,11 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.9);
 }
 
+.omp-hud-status-beacon.inactive {
+  background: #71717a;
+  opacity: 0.6;
+}
+
 @keyframes omp-beacon-pulse {
   0%, 100% {
     transform: scale(1);
@@ -376,5 +418,38 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, var(--accent, #3b82f6) 18%, transparent);
   border-color: var(--accent, #3b82f6);
   color: #fff;
+}
+
+.omp-hud-inactive-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  text-align: center;
+}
+
+.omp-hud-inactive-text {
+  font-size: 11px;
+  color: var(--fg-muted, #71717a);
+}
+
+.omp-hud-launch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--accent, #3b82f6);
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.omp-hud-launch-btn:hover {
+  background: #2563eb;
 }
 </style>
