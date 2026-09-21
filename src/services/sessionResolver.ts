@@ -77,23 +77,15 @@ export async function resolveActiveSessionInfo(
     const res = await ctx.exec.run(['pane', activePaneId]);
     if (res.code === 0 && res.stdout.trim()) {
       const parsed = JSON.parse(res.stdout.trim());
-      if (parsed && parsed.sessionFile) {
-        return {
-          cwd: parsed.cwd || ctx.terminal.activeCwd() || '',
-          sessionPath: parsed.sessionFile
-        };
+      if (!parsed.isRunning || !parsed.sessionFile) {
+        return null;
       }
+      return {
+        cwd: parsed.cwd || '',
+        sessionPath: parsed.sessionFile
+      };
     }
   } catch {}
-
-  const activeCwd = ctx.terminal.activeCwd() || '';
-  const files = await findSessionFiles(ctx.workspace, activeCwd);
-  if (files.length > 0) {
-    return {
-      cwd: activeCwd,
-      sessionPath: files[0]
-    };
-  }
 
   return null;
 }
