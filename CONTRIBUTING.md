@@ -59,3 +59,22 @@ That makes the rule simple: **any change under `src/` must be accompanied by `pn
 ## Reporting bugs
 
 Open an issue using the bug report template and fill in the Dinotty version, OS, Node version and plugin version. A HUD that shows the wrong thing is almost always a session-resolution problem; the output of the bridge for your pane is the single most useful attachment, and `docs/TROUBLESHOOTING.md` explains how to capture it.
+
+## Releasing
+
+Releases are driven entirely by a version tag. Nothing is published by hand.
+
+1. Bump `version` in both `package.json` and `plugin.json` to the same value. CI fails the release if they disagree with the tag.
+2. Run `pnpm build` and commit the regenerated `dist/`.
+3. Commit, then tag and push:
+
+```sh
+git tag -a vX.Y.Z -m "OMP Pilot X.Y.Z"
+git push origin main --follow-tags
+```
+
+The Release workflow then installs once, verifies the tag against both manifests, builds, publishes the npm package, zips the installable plugin folder, and attaches it to a generated GitHub release.
+
+### npm provenance
+
+The workflow requests an OIDC token and already grants `id-token: write`, but npm Trusted Publishing has to be enabled for the package in the npm web interface before attestations are produced. Until that is configured, the publish falls back to the `NPM_TOKEN` secret and the released versions carry no attestation. Once Trusted Publishing is linked to this repository and the Release workflow, add `provenance: true` back to `publishConfig` in `package.json` and verify with `npm view @tickernelz/dinotty-omp --json` that `dist.attestations` is present.
