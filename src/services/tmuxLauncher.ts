@@ -60,7 +60,7 @@ export async function launchOmp(
   });
 
   if (newPaneId) {
-    const launchCommand = `tmux new-session -A -s "${sessionName}" -c "${activeCwd}" "bash -c '${shellCmd}'"`;
+    const launchCommand = `tmux new-session -A -s "${sessionName}" -c "${activeCwd}" bash -c ${JSON.stringify(shellCmd)}`;
     ctx.terminal.send(newPaneId, `${launchCommand}\n`);
     ctx.ui.notify(`OMP split pane created [${sessionName}]`, 'info');
     return newPaneId;
