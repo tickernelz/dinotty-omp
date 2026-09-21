@@ -1,0 +1,37 @@
+{
+  "id": "dinotty-omp",
+  "name": "OMP Pilot",
+  "version": "1.0.0",
+  "description": "Superpowers suite for Oh My Pi: Live Terminal HUD, Managed Tmux Launcher, Visual Session & Trace Explorer, and Skill Palette",
+  "category": "ai",
+  "icon": "bot",
+  "entry": "./dist/main.js",
+  "styles": "./dist/styles.css",
+  "showInToolbar": true,
+  "permissions": [
+    "workspace.read",
+    "workspace.write"
+  ],
+  "commands": [
+    {
+      "id": "omp.quick-launch",
+      "title": "OMP: Launch Preset in New Tab"
+    },
+    {
+      "id": "omp.split-launch",
+      "title": "OMP: Launch Preset in Split Pane"
+    },
+    {
+      "id": "omp.skill-palette",
+      "title": "OMP: Search and Inject Skill"
+    },
+    {
+      "id": "omp.open-session-viewer",
+      "title": "OMP: Open Visual Session Explorer"
+    },
+    {
+      "id": "omp.tmux-copymode",
+      "title": "OMP: Toggle Tmux Copy-Mode"
+    }
+  ]
+}

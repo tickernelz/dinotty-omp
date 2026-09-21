@@ -1,0 +1,17 @@
+{
+  "name": "dinotty-omp",
+  "version": "1.0.0",
+  "description": "Superpowers suite for Oh My Pi in Dinotty: Managed Tmux Launcher, Live HUD, Session & Trace Explorer, and Skill Palette",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "symlink": "ln -sfn /home/zhafron/Projects/dinotty-omp /home/zhafron/.dinotty/plugins/dinotty-omp"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.5",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11",
+    "vue": "^3.4.27"
+  }
+}
