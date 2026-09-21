@@ -77,4 +77,12 @@ The Release workflow then installs once, verifies the tag against both manifests
 
 ### npm provenance
 
-The workflow requests an OIDC token and already grants `id-token: write`, but npm Trusted Publishing has to be enabled for the package in the npm web interface before attestations are produced. Until that is configured, the publish falls back to the `NPM_TOKEN` secret and the released versions carry no attestation. Once Trusted Publishing is linked to this repository and the Release workflow, add `provenance: true` back to `publishConfig` in `package.json` and verify with `npm view @tickernelz/dinotty-omp --json` that `dist.attestations` is present.
+Trusted Publishing is linked to this repository and the `release.yml` workflow, with both `npm publish` and `npm stage publish` permitted. The workflow grants `id-token: write`, so each release exchanges an OIDC token and attaches a provenance attestation; `NPM_TOKEN` remains only as a fallback.
+
+Verify after any release:
+
+```sh
+npm view @tickernelz/dinotty-omp --json | node -e "let d=String.raw``;process.stdin.on('data',c=>d+=c).on('end',()=>console.log(Boolean(JSON.parse(d).dist.attestations)))"
+```
+
+The Trusted Publishing connection is immutable. Renaming `release.yml` means deleting the connection on npm and creating a new one.
