@@ -8,7 +8,7 @@ export function createOmpMonitorSeries(ctx: PluginContext): MonitorSeries {
   let totalCost = 0;
   let status = 'idle';
   let activeSessionId = '';
-  let activeCwd = '/home/zhafron/Projects';
+  let activeCwd = '';
 
   async function poll() {
     try {
@@ -58,7 +58,7 @@ export function createOmpMonitorSeries(ctx: PluginContext): MonitorSeries {
         { label: 'Status', value: status },
         { label: 'Total Tokens', value: totalTokens.toLocaleString() },
         { label: 'Session Cost', value: `$${totalCost.toFixed(4)}` },
-        { label: 'Workspace', value: activeCwd },
+        { label: 'Workspace', value: activeCwd || 'Default' },
         { label: 'Session ID', value: activeSessionId || 'none' }
       ];
     }

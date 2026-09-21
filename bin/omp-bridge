@@ -1,73 +1,153 @@
-#!/usr/bin/env bash
-set -e
+#!/usr/bin/env node
+import os from 'node:os';
+import fs from 'node:fs';
+import path from 'node:path';
+import { execSync } from 'node:child_process';
 
-action="${1:-active}"
-pane_id="${2:-}"
+const action = process.argv[2] || 'active';
+const paneId = process.argv[3] || '';
+const homeDir = os.homedir();
+const isWin = os.platform() === 'win32';
 
-resolve_by_pane() {
-  local target_pane="$1"
-  local pid=""
-  local tty=""
-  local session=""
-  local target_cwd=""
-
-  if [ -n "$target_pane" ] && [ -f "$HOME/.config/dinotty/session-ledger.json" ]; then
-    pid=$(jq -r --arg p "$target_pane" '.entries[]? | select(.pane_id == $p) | .pid' "$HOME/.config/dinotty/session-ledger.json" 2>/dev/null || true)
-  fi
-
-  if [ -n "$pid" ]; then
-    tty=$(ps -o tty= -p "$pid" 2>/dev/null | tr -d ' ' || true)
-    if [ -n "$tty" ]; then
-      session=$(tmux list-clients -F '#{client_tty} #{client_session}' 2>/dev/null | grep -E "/dev/$tty(\s|$)" | head -1 | awk '{print $2}' || true)
-      if [ -n "$session" ]; then
-        target_cwd=$(tmux list-panes -t "$session" -F '#{pane_current_path}' 2>/dev/null | head -1 || true)
-      fi
-    fi
-    if [ -z "$target_cwd" ] && [ -d "/proc/$pid" ]; then
-      target_cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null || true)
-      local child
-      child=$(pgrep -P "$pid" -f omp 2>/dev/null | head -1 || true)
-      if [ -n "$child" ] && [ -d "/proc/$child" ]; then
-        local child_cwd
-        child_cwd=$(readlink -f "/proc/$child/cwd" 2>/dev/null || true)
-        [ -n "$child_cwd" ] && target_cwd="$child_cwd"
-      fi
-    fi
-  fi
-
-  if [ -z "$target_cwd" ]; then
-    target_cwd=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null || true)
-  fi
-
-  local session_file=""
-  if [ -n "$target_cwd" ]; then
-    local rel="${target_cwd#$HOME}"
-    local slug="${rel//\//-}"
-    [ -z "$slug" ] && slug="-"
-    if [ -d "$HOME/.omp/agent/sessions/$slug" ]; then
-      session_file=$(find "$HOME/.omp/agent/sessions/$slug" -maxdepth 1 -name '*.jsonl' ! -name '__*' -type f -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | awk '{print $2}' || true)
-    fi
-  fi
-
-  if [ -z "$session_file" ]; then
-    session_file=$(find "$HOME/.omp/agent/sessions" -name '*.jsonl' ! -name '__*' ! -name '*advisor*' -type f -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | awk '{print $2}' || true)
-    if [ -n "$session_file" ] && [ -z "$target_cwd" ]; then
-      target_cwd=$(head -n 5 "$session_file" 2>/dev/null | grep '"type":"session"' | jq -r .cwd 2>/dev/null || true)
-    fi
-  fi
-
-  printf '{"cwd":"%s","sessionFile":"%s"}\n' "${target_cwd:-$HOME}" "${session_file:-}"
+function safeExec(cmd) {
+  try {
+    return execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'], timeout: 1500 }).trim();
+  } catch {
+    return '';
+  }
 }
 
-if [ "$action" = "pane" ] || [ "$action" = "active" ]; then
-  resolve_by_pane "$pane_id"
-  exit 0
-fi
+function resolveByPane(targetPane) {
+  let targetCwd = '';
+  let sessionFile = '';
 
-if [ "$action" = "tmux-panes" ]; then
-  tmux list-panes -a -F '{"session":"#{session_name}","active":"#{pane_active}","path":"#{pane_current_path}","cmd":"#{pane_current_command}"}' 2>/dev/null | jq -s . || echo '[]'
-  exit 0
-fi
+  if (targetPane) {
+    const ledgerPath = path.join(homeDir, '.config', 'dinotty', 'session-ledger.json');
+    if (fs.existsSync(ledgerPath)) {
+      try {
+        const ledger = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'));
+        const entry = ledger.entries?.find((e) => e.pane_id === targetPane);
+        if (entry && entry.pid) {
+          const pid = entry.pid;
+          if (!isWin) {
+            const tty = safeExec(`ps -o tty= -p ${pid}`).trim();
+            if (tty) {
+              const clientsOut = safeExec(`tmux list-clients -F '#{client_tty} #{client_session}'`);
+              for (const line of clientsOut.split('\n')) {
+                const parts = line.trim().split(/\s+/);
+                if (parts[0] === `/dev/${tty}` && parts[1]) {
+                  targetCwd = safeExec(`tmux list-panes -t "${parts[1]}" -F '#{pane_current_path}'`).split('\n')[0] || '';
+                  break;
+                }
+              }
+            }
+            if (!targetCwd && fs.existsSync(`/proc/${pid}/cwd`)) {
+              try {
+                targetCwd = fs.realpathSync(`/proc/${pid}/cwd`);
+              } catch {}
+            }
+          }
+        }
+      } catch {}
+    }
+  }
 
-printf '{"error":"unknown action"}\n'
-exit 1
+  if (!isWin) { safeExec("tmux set-option -g set-titles on && tmux set-option -g set-titles-string '#T'"); }
+  if (!targetCwd && !isWin) {
+    targetCwd = safeExec("tmux display-message -p '#{pane_current_path}'").split('\n')[0] || '';
+  }
+
+  if (targetCwd) {
+    let rel = path.relative(homeDir, targetCwd);
+    let slug = '-';
+    if (rel && !rel.startsWith('..')) {
+      slug = '-' + rel.split(path.sep).filter(Boolean).join('-');
+    } else {
+      slug = '-' + targetCwd.split(path.sep).filter(Boolean).join('-');
+    }
+
+    const wsDir = path.join(homeDir, '.omp', 'agent', 'sessions', slug);
+    if (fs.existsSync(wsDir)) {
+      try {
+        const files = fs.readdirSync(wsDir)
+          .filter((f) => f.endsWith('.jsonl') && !f.startsWith('__'))
+          .map((f) => {
+            const fp = path.join(wsDir, f);
+            return { path: fp, mtime: fs.statSync(fp).mtimeMs };
+          })
+          .sort((a, b) => b.mtime - a.mtime);
+        if (files.length > 0) {
+          sessionFile = files[0].path;
+        }
+      } catch {}
+    }
+  }
+
+  if (!sessionFile) {
+    const sessionsRoot = path.join(homeDir, '.omp', 'agent', 'sessions');
+    if (fs.existsSync(sessionsRoot)) {
+      try {
+        const subdirs = fs.readdirSync(sessionsRoot)
+          .filter((d) => d.startsWith('-'))
+          .map((d) => path.join(sessionsRoot, d));
+
+        const allCandidates = [];
+        for (const sub of subdirs) {
+          try {
+            const files = fs.readdirSync(sub);
+            for (const f of files) {
+              if (f.endsWith('.jsonl') && !f.startsWith('__')) {
+                const fp = path.join(sub, f);
+                allCandidates.push({ path: fp, mtime: fs.statSync(fp).mtimeMs });
+              }
+            }
+          } catch {}
+        }
+
+        allCandidates.sort((a, b) => b.mtime - a.mtime);
+        if (allCandidates.length > 0) {
+          sessionFile = allCandidates[0].path;
+          if (!targetCwd) {
+            try {
+              const head = fs.readFileSync(sessionFile, 'utf8').slice(0, 1024);
+              for (const line of head.split('\n')) {
+                if (line.includes('"type":"session"')) {
+                  const parsed = JSON.parse(line);
+                  if (parsed.cwd) targetCwd = parsed.cwd;
+                  break;
+                }
+              }
+            } catch {}
+          }
+        }
+      } catch {}
+    }
+  }
+
+  const result = {
+    cwd: targetCwd || homeDir,
+    sessionFile: sessionFile || ''
+  };
+  process.stdout.write(JSON.stringify(result) + '\n');
+}
+
+if (action === 'pane' || action === 'active') {
+  resolveByPane(paneId);
+  process.exit(0);
+}
+
+if (action === 'tmux-panes') {
+  if (isWin) {
+    process.stdout.write('[]\n');
+    process.exit(0);
+  }
+  const out = safeExec("tmux list-panes -a -F '{\"session\":\"#{session_name}\",\"active\":\"#{pane_active}\",\"path\":\"#{pane_current_path}\",\"cmd\":\"#{pane_current_command}\"}'");
+  const parsed = out.split('\n').filter(Boolean).map((l) => {
+    try { return JSON.parse(l); } catch { return null; }
+  }).filter(Boolean);
+  process.stdout.write(JSON.stringify(parsed) + '\n');
+  process.exit(0);
+}
+
+process.stdout.write(JSON.stringify({ error: 'unknown action' }) + '\n');
+process.exit(1);

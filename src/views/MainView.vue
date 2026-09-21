@@ -432,12 +432,12 @@ const filteredSkills = computed(() => {
 });
 
 function extractSessionName(filePath: string): string {
-  const parts = filePath.split('/');
+  const parts = filePath.replace(/\\/g, '/').split('/');
   return parts[parts.length - 1] || filePath;
 }
 
 function extractWorkspace(filePath: string): string {
-  const parts = filePath.split('/');
+  const parts = filePath.replace(/\\/g, '/').split('/');
   if (parts.length >= 2) {
     return parts[parts.length - 2];
   }
@@ -459,7 +459,7 @@ function formatJson(val: unknown): string {
 }
 
 async function refreshSessions() {
-  const cwd = props.api.terminal.activeCwd() || '/home/zhafron/Projects';
+  const cwd = props.api.terminal.activeCwd() || '';
   sessionFiles.value = await findSessionFiles(props.api.workspace, cwd);
   if (sessionFiles.value.length > 0 && !selectedSessionPath.value) {
     await selectSession(sessionFiles.value[0]);

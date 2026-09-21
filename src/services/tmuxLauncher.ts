@@ -7,30 +7,68 @@ export interface LaunchOmpOptions {
   autoEnterCopyMode?: boolean;
 }
 
+export function isWindowsPlatform(): boolean {
+  if (typeof navigator !== 'undefined') {
+    const ua = navigator.userAgent || '';
+    const platform = (navigator as unknown as { platform?: string }).platform || '';
+    return /Win/i.test(platform) || /Windows/i.test(ua);
+  }
+  return false;
+}
+
 export function sanitizeSessionName(rawCwd: string): string {
   if (!rawCwd) return 'omp-main';
-  const parts = rawCwd.split('/').filter(Boolean);
+  const clean = rawCwd.replace(/[\\/]+$/, '');
+  const parts = clean.split(/[\\/]/).filter(Boolean);
   const leaf = parts[parts.length - 1] || 'main';
-  const sanitized = leaf.replace(/[^a-zA-Z0-9_-]/g, '_');
-  return `omp-${sanitized}`;
+  return `omp-${leaf.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
 }
 
 export function resolveConfigFlag(preset?: string): string {
   if (!preset || preset === 'default') {
     return '';
   }
-  return `--config=/home/zhafron/.omp/agent/config.${preset}.yml`;
+  return `--config=~/.omp/agent/config.${preset}.yml`;
 }
 
 export async function launchOmp(
   ctx: PluginContext,
   opts: LaunchOmpOptions = {}
 ): Promise<string | null> {
-  const activeCwd = opts.cwd || ctx.terminal.activeCwd() || '/home/zhafron/Projects';
+  const activeCwd = opts.cwd || ctx.terminal.activeCwd() || '.';
   const sessionName = sanitizeSessionName(activeCwd);
   const configFlag = resolveConfigFlag(opts.preset);
-  const shellCmd = configFlag ? `omp ${configFlag}; exec zsh` : 'omp; exec zsh';
   const target = opts.target || 'new-tab';
+  const isWin = isWindowsPlatform();
+
+  if (isWin) {
+    const ompArgs = configFlag ? [configFlag] : [];
+    if (target === 'new-tab') {
+      const paneId = await ctx.terminal.createTerminalTab({
+        cwd: activeCwd,
+        argv: ['omp', ...ompArgs],
+        title: `OMP: ${opts.preset || 'default'}`
+      });
+      ctx.ui.notify(`OMP launched in new tab`, 'info');
+      return paneId;
+    }
+
+    const direction = target === 'split-h' ? 'horizontal' : 'vertical';
+    const newPaneId = await ctx.terminal.splitTerminalPane({
+      direction,
+      cwd: activeCwd
+    });
+
+    if (newPaneId) {
+      const cmd = configFlag ? `omp ${configFlag}` : 'omp';
+      ctx.terminal.send(newPaneId, `${cmd}\r\n`);
+      ctx.ui.notify(`OMP split pane created`, 'info');
+      return newPaneId;
+    }
+    return null;
+  }
+
+  const shellCmd = configFlag ? `omp ${configFlag}; exec zsh` : 'omp; exec zsh';
 
   if (target === 'new-tab') {
     const paneId = await ctx.terminal.createTerminalTab({

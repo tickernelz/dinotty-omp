@@ -6,7 +6,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
-    "symlink": "ln -sfn /home/zhafron/Projects/dinotty-omp /home/zhafron/.dinotty/plugins/dinotty-omp"
+    "symlink": "mkdir -p ~/.dinotty/plugins && ln -sfn \"$PWD\" ~/.dinotty/plugins/dinotty-omp"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.5",

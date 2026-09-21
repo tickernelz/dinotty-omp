@@ -61,10 +61,12 @@ const sessionCache = new Map<string, { mtime: number; data: ParsedSession }>();
 
 export function encodeCwdToSessionDir(cwd: string): string {
   if (!cwd) return '-';
-  const clean = cwd.replace(/\/\+$/, '');
-  const rel = clean.replace(/^\/home\/[^/]+/, '');
+  const clean = cwd.replace(/\\/g, '/').replace(/\/+$/, '');
+  const rel = clean
+    .replace(/^(\/home\/[^/]+|\/Users\/[^/]+|[A-Za-z]:\/Users\/[^/]+|[A-Za-z]:)/i, '')
+    .replace(/^\/+/, '');
   if (!rel) return '-';
-  return rel.replace(/\//g, '-');
+  return '-' + rel.replace(/[^a-zA-Z0-9_-]/g, '-');
 }
 
 export async function resolveActiveSessionInfo(
@@ -77,14 +79,14 @@ export async function resolveActiveSessionInfo(
       const parsed = JSON.parse(res.stdout.trim());
       if (parsed && parsed.sessionFile) {
         return {
-          cwd: parsed.cwd || ctx.terminal.activeCwd() || '/home/zhafron',
+          cwd: parsed.cwd || ctx.terminal.activeCwd() || '',
           sessionPath: parsed.sessionFile
         };
       }
     }
   } catch {}
 
-  const activeCwd = ctx.terminal.activeCwd() || '/home/zhafron';
+  const activeCwd = ctx.terminal.activeCwd() || '';
   const files = await findSessionFiles(ctx.workspace, activeCwd);
   if (files.length > 0) {
     return {

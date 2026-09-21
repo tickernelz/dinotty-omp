@@ -37,6 +37,9 @@
   ],
   "bin": {
     "mode": "cli",
-    "entry": "./bin/omp-bridge"
+    "entry": "./bin/omp-bridge",
+    "entries": {
+      "windows-x86_64": "./bin/omp-bridge.cmd"
+    }
   }
 }

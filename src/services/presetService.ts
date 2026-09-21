@@ -14,7 +14,7 @@ export async function discoverPresets(workspace: PluginContext['workspace']): Pr
     {
       id: 'default',
       name: 'Default Config (config.yml)',
-      configPath: '/home/zhafron/.omp/agent/config.yml',
+      configPath: '~/.omp/agent/config.yml',
       isDefault: true,
       modelRoleSummary: 'Standard model roles'
     }
@@ -30,7 +30,7 @@ export async function discoverPresets(workspace: PluginContext['workspace']): Pr
         presets.push({
           id,
           name: `Profile: ${id}`,
-          configPath: `/home/zhafron/.omp/agent/${entry.name}`,
+          configPath: `~/.omp/agent/${entry.name}`,
           isDefault: false
         });
       }
