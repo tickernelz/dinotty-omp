@@ -151,6 +151,43 @@ function resolveWorkspaceFromPane(paneId, cwdHint) {
   return fallback;
 }
 
+function pidsForPane(paneId) {
+  if (IS_WINDOWS || !paneId) return [];
+
+  const ledger = readJson(path.join(HOME, '.config', 'dinotty', 'session-ledger.json'));
+  const entry = ledger?.entries?.find((item) => item.pane_id === paneId);
+  if (!entry?.pid) return [];
+
+  const shellPid = entry.pid;
+  const procTable = listProcesses();
+  const candidatePids = [shellPid, ...descendantsOf(shellPid, procTable).map((p) => p.pid)];
+
+  const tty = run('ps', ['-o', 'tty=', '-p', String(shellPid)]).trim();
+  if (tty && tty !== '?' && tmuxAvailable()) {
+    const clients = run('tmux', ['list-clients', '-F', '#{client_tty}\t#{client_session}']);
+    for (const line of clients.split('\n')) {
+      const [clientTty, sessionName] = line.split('\t');
+      if (!clientTty || !sessionName) continue;
+      if (clientTty.trim() !== `/dev/${tty}` && clientTty.trim() !== tty) continue;
+      const panePids = run('tmux', [
+        'list-panes',
+        '-t',
+        sessionName.trim(),
+        '-F',
+        '#{pane_pid}'
+      ]).split('\n').filter(Boolean).map(Number);
+      for (const ppid of panePids) {
+        if (!candidatePids.includes(ppid)) candidatePids.push(ppid);
+        for (const child of descendantsOf(ppid, procTable)) {
+          if (!candidatePids.includes(child.pid)) candidatePids.push(child.pid);
+        }
+      }
+    }
+  }
+
+  return candidatePids;
+}
+
 function liveOmpClients() {
   const root = ompRunHome();
   if (!fs.existsSync(root)) return [];
@@ -242,9 +279,11 @@ function resolveSessionFile(workspaceDir, pids) {
   }
   if (best) return best.path;
 
+  if (!IS_WINDOWS) return '';
+
   const fallback = newestTopLevelSession(workspaceDir);
   if (!fallback) return '';
-  if (IS_WINDOWS && Date.now() - fallback.mtimeMs > WINDOWS_FRESHNESS_MS) return '';
+  if (Date.now() - fallback.mtimeMs > WINDOWS_FRESHNESS_MS) return '';
   return fallback.path;
 }
 
@@ -432,7 +471,15 @@ function finalizeMetrics(state) {
 function describePane(paneId, cwdHint) {
   const workspace = resolveWorkspaceFromPane(paneId, cwdHint);
   const clients = liveOmpClients();
-  const matching = workspace ? clients.filter((client) => client.projectDir === workspace) : [];
+  const panePids = pidsForPane(paneId);
+
+  let matching = [];
+  if (panePids.length > 0) {
+    const panePidSet = new Set(panePids);
+    matching = clients.filter((client) => panePidSet.has(client.pid));
+  } else if (!paneId || IS_WINDOWS) {
+    matching = workspace ? clients.filter((client) => client.projectDir === workspace) : [];
+  }
 
   if (matching.length === 0) {
     return { cwd: workspace, sessionFile: '', isRunning: false, state: 'inactive', summary: null };

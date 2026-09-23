@@ -80,10 +80,10 @@
         </div>
       </template>
 
-      <template v-else-if="pane.state === 'starting'">
+      <template v-else-if="pane.state === 'starting' || !settled">
         <div class="omp-hud__placeholder">
           <span class="omp-hud__spinner" aria-hidden="true"></span>
-          <p class="omp-hud__placeholder-title">Starting OMP</p>
+          <p class="omp-hud__placeholder-title">{{ settled ? 'Starting OMP' : 'Reading session' }}</p>
           <p class="omp-hud__placeholder-note">Waiting for the first turn in {{ workspaceName }}</p>
         </div>
       </template>
@@ -134,6 +134,9 @@ import { getHostInfo } from '../services/hostInfo';
 import { launchOmp, launchOmpInActivePane, toggleCopyMode } from '../services/tmuxLauncher';
 
 const PRESET_STORAGE_KEY = 'dinotty-omp.preset';
+const PRESET_CACHE_KEY = 'dinotty-omp.presets';
+const SNAPSHOT_KEY_PREFIX = 'dinotty-omp.snapshot.';
+const SNAPSHOT_TTL_MS = 120000;
 const POLL_INTERVAL_MS = 2000;
 const LAUNCH_GRACE_MS = 12000;
 
@@ -146,13 +149,8 @@ const tmuxAvailable = ref(true);
 const presets = ref<PresetItem[]>([]);
 const selectedPresetId = ref(DEFAULT_PRESET_ID);
 
-const pane = ref<PaneSession>({
-  cwd: '',
-  sessionFile: '',
-  isRunning: false,
-  state: 'inactive',
-  summary: null
-});
+const pane = ref<PaneSession>(restoreSnapshot());
+const settled = ref(pane.value.state !== 'inactive');
 
 let timer: ReturnType<typeof setInterval> | null = null;
 let launchDeadline = 0;
@@ -209,6 +207,46 @@ const peekText = computed(() => {
   return `${shortModel.value} · ${pane.value.summary?.totalCost.toFixed(2) || '0.00'} USD`;
 });
 
+function snapshotKey(): string {
+  return SNAPSHOT_KEY_PREFIX + (props.api.terminal.activePaneId() || 'active');
+}
+
+function restoreSnapshot(): PaneSession {
+  const empty: PaneSession = { cwd: '', sessionFile: '', isRunning: false, state: 'inactive', summary: null };
+  try {
+    const raw = localStorage.getItem(snapshotKey());
+    if (!raw) return empty;
+    const stored = JSON.parse(raw) as { at: number; pane: PaneSession };
+    if (!stored || Date.now() - stored.at > SNAPSHOT_TTL_MS) return empty;
+    if (typeof stored.pane?.state !== 'string') return empty;
+    return stored.pane;
+  } catch {
+    return empty;
+  }
+}
+
+function persistSnapshot(value: PaneSession): void {
+  try {
+    localStorage.setItem(snapshotKey(), JSON.stringify({ at: Date.now(), pane: value }));
+  } catch {}
+}
+
+function restorePresets(): PresetItem[] {
+  try {
+    const raw = localStorage.getItem(PRESET_CACHE_KEY);
+    const stored = raw ? (JSON.parse(raw) as PresetItem[]) : [];
+    return Array.isArray(stored) ? stored : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistPresets(items: PresetItem[]): void {
+  try {
+    localStorage.setItem(PRESET_CACHE_KEY, JSON.stringify(items));
+  } catch {}
+}
+
 function rememberPreset(): void {
   try {
     localStorage.setItem(PRESET_STORAGE_KEY, selectedPresetId.value);
@@ -217,9 +255,11 @@ function rememberPreset(): void {
 
 async function refresh(): Promise<void> {
   const next = await readPaneSession(props.api);
+  settled.value = true;
 
   if (next.state === 'inactive' && launching.value && Date.now() < launchDeadline) {
     pane.value = { ...next, state: 'starting' };
+    persistSnapshot(pane.value);
     return;
   }
 
@@ -230,6 +270,7 @@ async function refresh(): Promise<void> {
   }
 
   pane.value = next;
+  persistSnapshot(next);
 }
 
 function openExplorer(): void {
@@ -260,10 +301,17 @@ onMounted(async () => {
     if (stored) selectedPresetId.value = stored;
   } catch {}
 
+  const cached = restorePresets();
+  if (cached.length) {
+    presets.value = cached;
+    presetsLoading.value = false;
+  }
+
   const host = await getHostInfo(props.api);
   tmuxAvailable.value = host ? host.tmux : true;
 
   presets.value = await discoverPresets(props.api);
+  persistPresets(presets.value);
   if (!presets.value.some((item) => item.id === selectedPresetId.value)) {
     selectedPresetId.value = DEFAULT_PRESET_ID;
   }

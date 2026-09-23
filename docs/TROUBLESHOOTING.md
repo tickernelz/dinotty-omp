@@ -94,6 +94,32 @@ Then check `cwd`. If it is not the directory you are working in, resolution neve
 
 ---
 
+## The HUD blinks: it disappears and comes back every few seconds
+
+**Cause.** The host reloads the whole plugin whenever it sees a change in the directory it watches for that plugin, and a reload unmounts and remounts every overlay. If the plugin directory is a symlink to a checkout, the watch follows the link, so any write inside the checkout counts as a plugin change. An agent running with that checkout as its project rewrites runtime state under `.omp/` every few seconds, so the plugin is reloaded on that same cadence.
+
+Measured on Dinotty 0.28.0: writes to `<checkout>/.omp/fabric/mesh/state.json` arrived every 5.0 s, each followed 501 to 525 ms later by a `plugin_changed` broadcast for this plugin, and the overlay was absent for 22 percent of a 60 s sample.
+
+**Fix.**
+
+1. Install by copy rather than by link:
+   ```sh
+   npx @tickernelz/dinotty-omp install
+   ```
+   Confirm it is not a link:
+   ```sh
+   readlink ~/.dinotty/plugins/dinotty-omp || echo copy install
+   ```
+2. Restart Dinotty once after switching. The host holds its watch on the checkout for the life of the server process, so a copy install alone does not release it. Uninstalling and reinstalling the plugin does not release it either.
+3. If you cannot restart yet, stop writing inside the checkout: move the agent runtime directory out of it and leave a symlink behind.
+   ```sh
+   mv <checkout>/.omp ~/.cache/omp-project-state/<name>
+   ln -s ~/.cache/omp-project-state/<name> <checkout>/.omp
+   ```
+   Builds, git operations and editor saves inside the checkout still reload the plugin until the restart happens.
+
+---
+
 ## Metrics are wrong, frozen, or from another session
 
 **Cause.** Several different things produce this symptom.

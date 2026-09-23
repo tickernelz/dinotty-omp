@@ -115,6 +115,14 @@ function link(dirOverride) {
   try {
     fs.symlinkSync(packageRoot, target, 'junction');
     process.stdout.write(`Linked ${target} to ${packageRoot}\n`);
+    process.stdout.write(
+      [
+        'Dinotty watches the plugin directory and follows this link into the checkout.',
+        'Every write inside the checkout reloads the plugin, which unmounts and remounts the HUD.',
+        'Running the agent with this checkout as its project writes state there continuously, so the HUD will blink.',
+        'Use "install" for daily use, and restart Dinotty after switching so the host drops the watch on the checkout.'
+      ].join('\n') + '\n'
+    );
   } catch (error) {
     if (error && error.code === 'EPERM') {
       fail(

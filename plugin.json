@@ -1,7 +1,7 @@
 {
   "id": "dinotty-omp",
   "name": "OMP Pilot",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "minAppVersion": "0.19.0",
   "description": "Live session HUD, managed tmux launcher, session explorer and skill palette for the Oh My Pi coding agent",
   "description_zh": "Oh My Pi 编码代理的实时会话 HUD、托管 tmux 启动器、会话浏览器与技能面板",

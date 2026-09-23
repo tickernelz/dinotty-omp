@@ -90,6 +90,8 @@ pnpm run link
 
 `pnpm run link` creates a link from the Dinotty plugin directory to this checkout. It refuses to run if `dist/main.js` is missing, replaces an existing link, and refuses to overwrite a real directory. `pnpm run unlink` removes it again. Use `pnpm run link`, not `pnpm link`: the latter is pnpm's own workspace-linking command and would shadow the script.
 
+A link has a cost worth knowing before you adopt it: Dinotty watches its plugin directory and follows the link into the checkout, so **every write inside the checkout reloads the plugin** and remounts the HUD. Running `omp` with this checkout as its project writes runtime state into `.omp/` every few seconds, which turns that into a permanent blink. Prefer the copy install for daily use. After switching from a link to a copy, restart Dinotty: the host keeps watching the checkout for the life of the server process.
+
 A prebuilt `dist/` is committed to this repository. If you only want to use the plugin, copying or linking the folder into the plugin directory is enough -- no build, and no Node, required. The `pnpm install && pnpm build` steps above are the development path, and guarantee a bundle fresh from your checkout.
 
 ### Plugin directory locations
@@ -192,7 +194,9 @@ Add to `~/.zshrc` or `~/.bashrc`:
 ```sh
 omp() {
   if [ -z "$TMUX" ] && { [ -n "$DINOTTY_PANE_ID" ] || [ "$TERM_PROGRAM" = "dinotty" ]; }; then
-    session="omp-$(basename "$PWD" | sed 's/[^A-Za-z0-9_-]/_/g')"
+    suffix="${DINOTTY_PANE_ID:0:8}"
+    [ -z "$suffix" ] && suffix="$$"
+    session="omp-$(basename "$PWD" | sed 's/[^A-Za-z0-9_-]/_/g')-$suffix"
     tmux new-session -A -s "$session" -c "$PWD" "command omp $*; exec \"$SHELL\""
   else
     command omp "$@"
@@ -200,7 +204,7 @@ omp() {
 }
 ```
 
-It engages only inside Dinotty and only when you are not already inside tmux; everywhere else `command omp "$@"` runs the real binary untouched. The session naming matches what the plugin uses, so both paths attach to the same per-workspace session.
+It engages only inside Dinotty and only when you are not already inside tmux; everywhere else `command omp "$@"` runs the real binary untouched. The session naming incorporates the pane identifier so each tab or split pane runs its own session, allowing multiple tabs in the same workspace without collisions.
 
 ---
 

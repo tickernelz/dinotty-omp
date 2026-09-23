@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-09-22
+
+### Fixed
+
+- Multi-tab workspace collision: running OMP in multiple tabs or split panes for the same workspace directory no longer attaches to or terminates the existing session. tmux session names are scoped per pane/tab suffix, and pane-to-session resolution in the bridge is bound to the exact process tree of the owning pane rather than broad workspace directory matching.
+- HUD flicker: the overlay no longer flashes an empty panel after the host reloads the plugin. The last session snapshot and the discovered profile list are cached in browser storage and repainted on mount, and the placeholder distinguishes a session that is starting from a first read that has not answered yet.
+
+### Changed
+
+- `link` now explains the cost of a development link: Dinotty follows the link into the checkout, so every write there reloads the plugin and remounts the overlay. Running the agent with the checkout as its project writes state continuously, which is why the HUD blinks. Switching from a link to a copy requires restarting Dinotty, because the host keeps its watch on the checkout for the life of the server process.
+- The OMP runtime directory (`.omp/`) is ignored by git.
+
 ## [1.0.0] - 2026-09-21
 
 ### Added

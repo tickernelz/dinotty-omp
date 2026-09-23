@@ -1,6 +1,6 @@
 {
   "name": "@tickernelz/dinotty-omp",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Dinotty plugin for the Oh My Pi coding agent: live session HUD, managed tmux launcher, visual session explorer and skill palette",
   "type": "module",
   "scripts": {

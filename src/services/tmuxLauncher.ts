@@ -10,13 +10,14 @@ export interface LaunchOmpOptions {
   cwd?: string;
 }
 
-export function sanitizeSessionName(rawCwd: string): string {
-  if (!rawCwd) return 'omp-workspace';
+export function sanitizeSessionName(rawCwd: string, suffix?: string): string {
+  if (!rawCwd) return suffix ? `omp-workspace-${suffix}` : 'omp-workspace';
   const trimmed = rawCwd.replace(/[\\/]+$/, '');
   const segments = trimmed.split(/[\\/]/).filter(Boolean);
   const leaf = segments[segments.length - 1] || 'workspace';
-  const safe = leaf.replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 40);
-  return `omp-${safe || 'workspace'}`;
+  const safe = leaf.replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 32);
+  const base = `omp-${safe || 'workspace'}`;
+  return suffix ? `${base}-${suffix}` : base;
 }
 
 export function buildOmpArgs(preset?: PresetItem | null): string[] {
@@ -40,12 +41,13 @@ export async function launchOmp(
   const useTmux = Boolean(host?.tmux) && host?.platform !== 'win32';
 
   const directCommand = ['omp', ...ompArgs].map(quoteForShell).join(' ');
-  const sessionName = sanitizeSessionName(cwd);
   const innerCommand = `${directCommand}; exec "$SHELL"`;
 
   if (target === 'new-tab') {
+    const sessionSuffix = Math.random().toString(36).slice(2, 10);
+    const sessionName = sanitizeSessionName(cwd, sessionSuffix);
     const argv = useTmux
-      ? ['tmux', 'new-session', '-A', '-s', sessionName, '-c', cwd, 'sh', '-c', innerCommand]
+      ? ['tmux', 'new-session', '-s', sessionName, '-c', cwd, 'sh', '-c', innerCommand]
       : ['omp', ...ompArgs];
 
     const paneId = await ctx.terminal.createTerminalTab({
@@ -73,8 +75,12 @@ export async function launchOmp(
     return null;
   }
 
+  const sessionSuffix =
+    paneId.replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 8) ||
+    Math.random().toString(36).slice(2, 10);
+  const sessionName = sanitizeSessionName(cwd, sessionSuffix);
   const command = useTmux
-    ? `tmux new-session -A -s ${quoteForShell(sessionName)} -c ${quoteForShell(cwd)} sh -c ${quoteForShell(innerCommand)}`
+    ? `tmux new-session -s ${quoteForShell(sessionName)} -c ${quoteForShell(cwd)} sh -c ${quoteForShell(innerCommand)}`
     : directCommand;
 
   ctx.terminal.send(paneId, `${command}\n`);
