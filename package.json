@@ -8,6 +8,7 @@
     "dev": "vite build --watch",
     "typecheck": "vue-tsc --noEmit",
     "check:bridge": "node --check bin/omp-bridge && node --check scripts/cli.mjs",
+    "test": "node scripts/test.mjs",
     "link": "node scripts/cli.mjs link",
     "unlink": "node scripts/cli.mjs unlink"
   },

@@ -5,8 +5,11 @@ import { createOmpMonitor } from './services/statusMonitor';
 import { buildPresetQuickPickItems, discoverPresets } from './services/presetService';
 import { injectSkill, loadAllSkills, clearSkillCache } from './services/skillService';
 import { toggleCopyMode } from './services/tmuxLauncher';
-import { clearSessionCache } from './services/sessionResolver';
+import { clearSessionCache } from './services/sessionLoader';
+import { resetPaneSession } from './services/paneSession';
 import { resetHostInfo } from './services/hostInfo';
+import { defaultOverlayPosition } from './services/overlayLayout';
+import { migrateStoredOverlayPosition } from './services/overlayPosition';
 
 let teardown: Array<() => void> = [];
 
@@ -63,6 +66,9 @@ export function activate(ctx: PluginContext): PluginExports {
   const monitor = createOmpMonitor(ctx);
   teardown.push(() => monitor.dispose());
 
+  const hudPosition = defaultOverlayPosition();
+  migrateStoredOverlayPosition(hudPosition);
+
   return {
     component: MainView,
     overlay: [
@@ -71,7 +77,7 @@ export function activate(ctx: PluginContext): PluginExports {
         component: MiniHudOverlay,
         dragHandle: 'grip',
         interactive: true,
-        defaultPosition: 'top-right'
+        defaultPosition: hudPosition
       }
     ],
     monitor: { series: [monitor.series] },
@@ -87,6 +93,7 @@ export function deactivate(): void {
   }
   teardown = [];
   clearSessionCache();
+  resetPaneSession();
   clearSkillCache();
   resetHostInfo();
 }

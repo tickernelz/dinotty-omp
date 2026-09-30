@@ -5,6 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Windowed transcript loading reads the newest session chunks through `omp-bridge` instead of the host's 512 KB file preview, while exact whole-file metrics remain sourced from the bridge.
+
+### Changed
+
+- The HUD and status bar now share one visibility-aware, file-watch-driven pane session poller instead of running duplicate fixed-interval probes.
+- Mobile HUD defaults avoid the iOS top-right safe area, migrate unsafe stored positions once, add safe-area insets, and enlarge touch targets.
+
+### Fixed
+
+- Tmux pane resolution follows the client-scoped active pane instead of the first pane returned for a session.
+- Bridge metric cache writes are atomic and repeated ledger, tty, and tmux probes are memoized per invocation.
+
 ## [1.1.2] - 2026-09-22
 
 ### Fixed

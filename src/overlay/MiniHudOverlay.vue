@@ -128,16 +128,14 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { Disposable, PluginContext } from '../types/dinotty';
 import Icon from '../components/Icon.vue';
-import { readPaneSession, type PaneSession } from '../services/sessionResolver';
+import type { PaneSession } from '../services/sessionResolver';
+import { subscribePaneSession, refreshPaneSession } from '../services/paneSession';
 import { discoverPresets, DEFAULT_PRESET_ID, type PresetItem } from '../services/presetService';
 import { getHostInfo } from '../services/hostInfo';
 import { launchOmp, launchOmpInActivePane, toggleCopyMode } from '../services/tmuxLauncher';
 
 const PRESET_STORAGE_KEY = 'dinotty-omp.preset';
 const PRESET_CACHE_KEY = 'dinotty-omp.presets';
-const SNAPSHOT_KEY_PREFIX = 'dinotty-omp.snapshot.';
-const SNAPSHOT_TTL_MS = 120000;
-const POLL_INTERVAL_MS = 2000;
 const LAUNCH_GRACE_MS = 12000;
 
 const props = defineProps<{ api: PluginContext; dragging?: boolean }>();
@@ -149,11 +147,13 @@ const tmuxAvailable = ref(true);
 const presets = ref<PresetItem[]>([]);
 const selectedPresetId = ref(DEFAULT_PRESET_ID);
 
-const pane = ref<PaneSession>(restoreSnapshot());
-const settled = ref(pane.value.state !== 'inactive');
+const emptyPane: PaneSession = { cwd: '', sessionFile: '', isRunning: false, state: 'inactive', summary: null };
+const pane = ref<PaneSession>(emptyPane);
+const settled = ref(false);
 
-let timer: ReturnType<typeof setInterval> | null = null;
 let launchDeadline = 0;
+let launchRefreshTimer: number | undefined;
+let unmounted = false;
 const disposables: Disposable[] = [];
 
 const selectedPreset = computed(
@@ -207,29 +207,6 @@ const peekText = computed(() => {
   return `${shortModel.value} · ${pane.value.summary?.totalCost.toFixed(2) || '0.00'} USD`;
 });
 
-function snapshotKey(): string {
-  return SNAPSHOT_KEY_PREFIX + (props.api.terminal.activePaneId() || 'active');
-}
-
-function restoreSnapshot(): PaneSession {
-  const empty: PaneSession = { cwd: '', sessionFile: '', isRunning: false, state: 'inactive', summary: null };
-  try {
-    const raw = localStorage.getItem(snapshotKey());
-    if (!raw) return empty;
-    const stored = JSON.parse(raw) as { at: number; pane: PaneSession };
-    if (!stored || Date.now() - stored.at > SNAPSHOT_TTL_MS) return empty;
-    if (typeof stored.pane?.state !== 'string') return empty;
-    return stored.pane;
-  } catch {
-    return empty;
-  }
-}
-
-function persistSnapshot(value: PaneSession): void {
-  try {
-    localStorage.setItem(snapshotKey(), JSON.stringify({ at: Date.now(), pane: value }));
-  } catch {}
-}
 
 function restorePresets(): PresetItem[] {
   try {
@@ -253,13 +230,12 @@ function rememberPreset(): void {
   } catch {}
 }
 
-async function refresh(): Promise<void> {
-  const next = await readPaneSession(props.api);
+function applySnapshot(next: PaneSession): void {
+  if (unmounted) return;
   settled.value = true;
 
   if (next.state === 'inactive' && launching.value && Date.now() < launchDeadline) {
     pane.value = { ...next, state: 'starting' };
-    persistSnapshot(pane.value);
     return;
   }
 
@@ -270,7 +246,6 @@ async function refresh(): Promise<void> {
   }
 
   pane.value = next;
-  persistSnapshot(next);
 }
 
 function openExplorer(): void {
@@ -287,12 +262,16 @@ async function split(): Promise<void> {
 
 async function launchHere(): Promise<void> {
   const started = await launchOmpInActivePane(props.api, selectedPreset.value);
-  if (!started) return;
+  if (!started || unmounted) return;
   rememberPreset();
   launching.value = true;
-  launchDeadline = Date.now() + LAUNCH_GRACE_MS;
   pane.value = { ...pane.value, state: 'starting', summary: null };
-  window.setTimeout(() => void refresh(), 600);
+  launchDeadline = Date.now() + LAUNCH_GRACE_MS;
+  if (launchRefreshTimer !== undefined) window.clearTimeout(launchRefreshTimer);
+  launchRefreshTimer = window.setTimeout(() => {
+    launchRefreshTimer = undefined;
+    if (!unmounted) void refreshPaneSession(true);
+  }, 600);
 }
 
 onMounted(async () => {
@@ -307,36 +286,52 @@ onMounted(async () => {
     presetsLoading.value = false;
   }
 
+  disposables.push(
+    subscribePaneSession(props.api, {
+      listener: applySnapshot,
+      visible: () => !collapsed.value
+    })
+  );
+
   const host = await getHostInfo(props.api);
+  if (unmounted) return;
   tmuxAvailable.value = host ? host.tmux : true;
 
-  presets.value = await discoverPresets(props.api);
+  const discovered = await discoverPresets(props.api);
+  if (unmounted) return;
+  presets.value = discovered;
   persistPresets(presets.value);
   if (!presets.value.some((item) => item.id === selectedPresetId.value)) {
     selectedPresetId.value = DEFAULT_PRESET_ID;
   }
   presetsLoading.value = false;
-
-  await refresh();
-  timer = setInterval(() => void refresh(), POLL_INTERVAL_MS);
-
-  if (typeof props.api.terminal.onDidChangeActivePane === 'function') {
-    disposables.push(props.api.terminal.onDidChangeActivePane(() => void refresh()));
-  }
 });
 
 onBeforeUnmount(() => {
-  if (timer) clearInterval(timer);
+  unmounted = true;
+  if (launchRefreshTimer !== undefined) {
+    window.clearTimeout(launchRefreshTimer);
+    launchRefreshTimer = undefined;
+  }
   for (const item of disposables) {
     try {
       item.dispose();
     } catch {}
   }
+  disposables.length = 0;
 });
 </script>
 
 <style scoped>
 .omp-hud {
+  --omp-safe-top: env(safe-area-inset-top, 0px);
+  --omp-safe-right: env(safe-area-inset-right, 0px);
+  --omp-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --omp-safe-left: env(safe-area-inset-left, 0px);
+  margin-top: var(--omp-safe-top);
+  margin-right: var(--omp-safe-right);
+  margin-bottom: var(--omp-safe-bottom);
+  margin-left: var(--omp-safe-left);
   width: 244px;
   border: 1px solid var(--border, #27272a);
   border-radius: var(--radius, 10px);
@@ -380,8 +375,12 @@ onBeforeUnmount(() => {
   gap: 6px;
   flex: 1;
   min-width: 0;
+  min-height: 32px;
+  padding: 2px 0;
   cursor: grab;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .omp-hud__grip:active {
@@ -544,6 +543,37 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 5px;
+}
+
+@media (max-width: 560px) {
+  .omp-hud {
+    width: min(244px, calc(100vw - 24px - var(--omp-safe-left) - var(--omp-safe-right)));
+    max-height: calc(
+      100vh - 24px - var(--omp-safe-top) - var(--omp-safe-bottom)
+    );
+    overflow-y: auto;
+  }
+
+  .omp-hud__grip {
+    min-height: 44px;
+  }
+
+  .omp-hud__icon {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .omp-hud__action {
+    min-height: 44px;
+    padding: 8px 4px;
+    font-size: 11px;
+  }
+
+  .omp-hud__select,
+  .omp-hud__launch-btn {
+    min-height: 40px;
+    font-size: 12px;
+  }
 }
 
 .omp-hud__action {

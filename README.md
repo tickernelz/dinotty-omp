@@ -173,7 +173,7 @@ The **Sessions** tab lists transcripts newest first, with a filter box and a **T
 - **Open** starts a new OMP tab in that session's workspace.
 - Thinking blocks and tool calls are collapsed by default; expand a tool call to see its arguments and its result, with failed calls marked.
 - Images attached to a turn render inline and open in a lightbox when clicked.
-- A transcript larger than the host's file preview limit shows a banner saying so. The turns rendered are the first part of the file; the HUD's numbers remain exact, because they come from the bridge rather than the preview.
+- A transcript larger than the host's file preview limit shows a banner with the loaded byte window and a **Load earlier** action. The explorer starts from the newest chunk instead of the file head; exact model, token, cost and turn totals come from the bridge.
 
 ### Skill Matrix
 
@@ -241,7 +241,7 @@ The bundle is built by Vite in library mode. `vue` is aliased to `src/shims/vue.
 |-- src/
 |   |-- components/         shared UI pieces
 |   |-- overlay/            MiniHudOverlay.vue
-|   |-- services/           host, preset, session, skill, status and tmux logic
+|   |-- services/           pane session, transcript loader/parser, host, preset, skill, status and tmux logic
 |   |-- shims/              host Vue runtime bridge
 |   |-- types/              Dinotty plugin API types
 |   |-- utils/              icon definitions

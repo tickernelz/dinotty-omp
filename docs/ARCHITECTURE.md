@@ -1,6 +1,6 @@
 # Architecture
 
-OMP Pilot runs as two pieces that talk over a single JSON pipe: a Vue plugin inside the Dinotty renderer, and a small Node CLI that the host launches on demand.
+OMP Pilot runs as a Vue plugin plus a small Node CLI. The renderer uses one shared pane-session store; it refreshes from active-pane changes, transcript-directory watch events, and a bounded safety timer. The CLI owns process, tmux and large-file work.
 
 ```
 Dinotty renderer (browser)                      host process
@@ -12,32 +12,35 @@ Dinotty renderer (browser)                      host process
 |   commands   quick picks     |                |                         |
 +------------------------------+                +-------------------------+
               |                                            |
-              | ctx.workspace readFile/readDir/stat        | fs, child_process
+              | shared pane store + workspace.watch        | fs, child_process
               v                                            v
         OMP agent directory                      process table, tmux server
 ```
+
 
 ## Browser side
 
 `src/main.ts` exports `activate(ctx)` and returns the plugin's contributions:
 
-- `component` -- `MainView.vue`, the tab the host opens for this plugin, carrying the Sessions and Traces, Skill Matrix, and Presets and Profiles panes.
-- `overlay` -- one interactive entry rendering `MiniHudOverlay.vue` with a drag handle.
-- `monitor.series` -- one series, `dinotty-omp:session`, labelled `OMP session cost`. It polls every 2500 ms, re-polls on `terminal.onDidChangeActivePane`, and exposes `current`, `statusText` and `detail` to the host status bar. The HUD polls the same source independently every 2000 ms.
-- Commands: `omp.open-session-viewer` and `omp.tmux-copymode` are plain commands; `omp.quick-launch`, `omp.split-launch` and `omp.skill-palette` are quick picks whose item lists are computed when opened.
+- `component` -- `MainView.vue`, the Sessions, Skills and Profiles tab.
+- `overlay` -- one interactive `MiniHudOverlay.vue` with a mobile-safe default position.
+- `monitor.series` -- one `dinotty-omp:session` cost series backed by the shared pane-session store.
+- Commands: `omp.open-session-viewer`, `omp.tmux-copymode`, `omp.quick-launch`, `omp.split-launch` and `omp.skill-palette`.
 
-`deactivate()` disposes every registration collected during activation, including the monitor's interval and pane listener.
+`deactivate()` disposes registrations and resets the shared store.
 
 The services under `src/services` hold the logic:
 
 | Module | Responsibility |
 | --- | --- |
-| `hostInfo.ts` | Calls the bridge's `doctor` action once and caches the answer for the session. Everything that needs to know the platform, the home directory, the OMP agent directory or whether tmux exists reads it from here rather than sniffing the browser. Also carries the path helpers that keep Windows and POSIX separators straight. This is what makes Windows work: every OMP path is built by joining the absolute `ompHome` and `home` the bridge reported, so nothing in the browser ever emits a `~` string that only a POSIX shell could expand. |
-| `sessionResolver.ts` | Asks the bridge which session belongs to the active pane, lists and loads transcripts through the workspace API, and parses JSONL into turns, tool calls, usage and status. |
-| `statusMonitor.ts` | Builds the status bar series from the resolver's snapshot, and returns a disposable that stops polling. |
-| `tmuxLauncher.ts` | Builds the launch argv, derives the tmux session name, and sends the copy-mode key sequence. |
-| `presetService.ts` | Scans the OMP agent directory for `config.<name>.yml` and builds quick-pick items. |
-| `skillService.ts` | Scans the skill roots, parses `SKILL.md` frontmatter, classifies and filters, and injects `/skill <name>` into the active pane. |
+| `hostInfo.ts` | Caches bridge `doctor` output and joins absolute host paths. |
+| `paneSession.ts` | Shares one pane snapshot across the HUD, monitor and MainView; watches the active session directory and applies bounded safety refreshes. |
+| `sessionResolver.ts` | Resolves the active pane and lists transcript files. |
+| `sessionLoader.ts` / `sessionParser.ts` | Reads bridge chunks, keeps exact bridge totals, parses bounded turn windows and supports earlier-history paging. |
+| `statusMonitor.ts` | Exposes the shared snapshot as the status series. |
+| `tmuxLauncher.ts` | Builds launch argv, derives tmux names and sends copy-mode keys. |
+| `presetService.ts` | Scans profile configs and builds quick-pick items. |
+| `skillService.ts` | Scans, classifies and injects skills. |
 
 Nothing in the browser decides the platform for itself. The launcher wraps `omp` in tmux when `doctor` reports tmux present and the platform is not Windows, and launches `omp` directly otherwise; the copy-mode toggle refuses with a notification instead of sending keys into a shell that has no tmux.
 
@@ -61,6 +64,8 @@ The helper takes an action as its first argument, writes exactly one JSON docume
 | --- | --- |
 | `pane <paneId> [cwdHint]` | Resolve the given Dinotty pane. The optional hint is the working directory the renderer believes the pane is in, used when process resolution cannot answer. |
 | `active` | The same code path with no pane id; resolution falls through to the hint and the fallbacks below. |
+| `chunk <sessionFile> <offset> <maxBytes>` | Return a newline-aligned, byte-addressed transcript window with session metadata. The window extends through a complete record and can exceed `maxBytes` for one large JSONL record. |
+| `file-metrics <sessionFile>` | Return exact aggregate model, token, cost, turn and status metrics using the whole-file incremental cache. |
 | `tmux-panes` | List every tmux pane on the machine. |
 | `doctor` | Report the host environment. |
 

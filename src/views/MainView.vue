@@ -38,7 +38,7 @@
     </header>
 
     <main class="omp-app__body">
-      <section v-show="activeTab === 'sessions'" class="omp-pane omp-pane--sessions">
+      <section v-if="activeTab === 'sessions'" class="omp-pane omp-pane--sessions">
         <aside class="omp-sessions">
           <div class="omp-sessions__head">
             <div class="omp-field omp-field--search">
@@ -78,11 +78,11 @@
             >
               <span class="omp-session__title">
                 <Icon name="file-text" :size="12" />
-                {{ displayName(item.path) }}
+                {{ item.displayName }}
               </span>
               <span class="omp-session__meta">
-                <span>{{ workspaceOf(item.path) }}</span>
-                <span>{{ relativeTime(item.modified) }}</span>
+                <span>{{ item.workspace }}</span>
+                <span>{{ item.ageLabel }}</span>
               </span>
             </button>
           </div>
@@ -94,7 +94,7 @@
               <div class="omp-transcript__meta">
                 <span class="omp-tag"><Icon name="cpu" :size="12" />{{ session.model }}</span>
                 <span class="omp-tag"><Icon name="layers" :size="12" />{{ session.totalTokens.toLocaleString() }} tok</span>
-                <span class="omp-tag omp-tag--cost"><Icon name="activity" :size="12" />{{ session.totalCost.toFixed(3) }} USD</span>
+                <span class="omp-tag omp-tag--cost"><Icon name="activity" :size="12" />{{ session.totalCost.toFixed(3) }} USD{{ session.metricsExact ? '' : ' loaded' }}</span>
                 <span class="omp-tag"><Icon name="message-square" :size="12" />{{ session.messages.length }} entries</span>
               </div>
               <div class="omp-transcript__tools">
@@ -113,15 +113,31 @@
               </div>
             </header>
 
-            <p v-if="session.truncated" class="omp-banner">
-              This transcript is larger than the host file preview limit, so only the first part is rendered.
-              Live metrics in the HUD are still exact.
-            </p>
+            <div v-if="session.droppedHead" class="omp-banner omp-banner--action">
+              <span>
+                Showing the last {{ (session.loadedBytes / 1048576).toFixed(1) }} MB of
+                {{ (session.fileSize / 1048576).toFixed(1) }} MB ({{ session.turns }} turns{{ session.metricsExact ? '' : ' in loaded window' }}).
+              </span>
+              <button type="button" class="omp-btn" :disabled="earlierLoading" @click="loadEarlier">
+                <Icon name="history" :size="12" />
+                <span>{{ earlierLoading ? 'Loading' : 'Load earlier' }}</span>
+              </button>
+            </div>
 
             <div class="omp-turns">
-              <p v-if="!visibleMessages.length" class="omp-hint">No turn matches that filter.</p>
+              <p v-if="sessionLoading" class="omp-hint">Reading transcript...</p>
+              <p v-else-if="!visibleMessages.length" class="omp-hint">No turn matches that filter.</p>
+              <button
+                v-if="hiddenTurnCount"
+                type="button"
+                class="omp-btn omp-btn--wide"
+                @click="renderLimit += RENDER_STEP"
+              >
+                <Icon name="chevron-up" :size="12" />
+                <span>Show {{ Math.min(hiddenTurnCount, RENDER_STEP) }} earlier turns ({{ hiddenTurnCount }} hidden)</span>
+              </button>
               <article
-                v-for="message in visibleMessages"
+                v-for="message in renderedMessages"
                 :key="message.id"
                 class="omp-turn"
                 :class="`omp-turn--${message.role}`"
@@ -131,7 +147,7 @@
                     <Icon :name="roleIcon(message.role)" :size="13" />
                     {{ roleLabel(message.role) }}
                   </span>
-                  <span class="omp-turn__time">{{ clockTime(message.timestamp) }}</span>
+                  <span class="omp-turn__time">{{ message.timeLabel }}</span>
                 </header>
 
                 <details v-if="message.thinking" class="omp-fold">
@@ -165,7 +181,7 @@
                     <span class="omp-fold__state">{{ call.isError ? 'failed' : 'ok' }}</span>
                   </summary>
                   <p class="omp-fold__label">Arguments</p>
-                  <pre class="omp-code">{{ pretty(call.arguments) }}</pre>
+                  <pre class="omp-code">{{ call.argumentsLabel }}</pre>
                   <template v-if="call.result">
                     <p class="omp-fold__label">Result</p>
                     <pre class="omp-code">{{ call.result }}</pre>
@@ -182,13 +198,13 @@
         </div>
       </section>
 
-      <section v-show="activeTab === 'skills'" class="omp-pane omp-pane--skills">
+      <section v-if="activeTab === 'skills'" class="omp-pane omp-pane--skills">
         <div class="omp-skills__head">
           <div class="omp-field omp-field--search omp-field--grow">
             <Icon name="search" :size="14" />
             <input v-model="skillQuery" type="search" placeholder="Search skills by name or intent" aria-label="Search skills" />
           </div>
-          <button type="button" class="omp-icon-btn" title="Reload skills" @click="reloadSkills">
+          <button type="button" class="omp-icon-btn" title="Reload skills" @click="refreshSkills">
             <Icon name="refresh" :size="13" />
           </button>
         </div>
@@ -244,7 +260,7 @@
         </div>
       </section>
 
-      <section v-show="activeTab === 'profiles'" class="omp-pane omp-pane--profiles">
+      <section v-if="activeTab === 'profiles'" class="omp-pane omp-pane--profiles">
         <header class="omp-profiles__head">
           <h2>Profiles</h2>
           <p>Discovered from the OMP agent directory. Launch one into a new tab or a split pane.</p>
@@ -279,7 +295,7 @@
     </main>
 
     <div v-if="lightbox" class="omp-lightbox" role="dialog" aria-modal="true" @click="lightbox = null">
-      <button type="button" class="omp-lightbox__close" aria-label="Close image">
+      <button type="button" class="omp-lightbox__close" aria-label="Close image" @click="lightbox = null">
         <Icon name="x" :size="18" />
       </button>
       <img :src="lightbox" alt="Attachment preview" @click.stop />
@@ -292,14 +308,10 @@ import { computed, onMounted, ref } from 'vue';
 import type { PluginContext } from '../types/dinotty';
 import Icon from '../components/Icon.vue';
 import type { IconName } from '../utils/icons';
-import {
-  listSessionFiles,
-  loadSession,
-  readPaneSession,
-  sessionDisplayName,
-  workspaceLabel,
-  type ParsedSession
-} from '../services/sessionResolver';
+import { listSessionFiles, type SessionListItem } from '../services/sessionResolver';
+import { loadSessionIncremental, type LoadedSession } from '../services/sessionLoader';
+import { searchableText } from '../services/sessionParser';
+import { peekPaneSession } from '../services/paneSession';
 import { filterSkills, injectSkill, loadAllSkills, type SkillItem } from '../services/skillService';
 import { discoverPresets, DEFAULT_PRESET_ID, type PresetItem } from '../services/presetService';
 import { getHostInfo, joinHostPath } from '../services/hostInfo';
@@ -307,19 +319,26 @@ import { launchOmp, type LaunchTarget } from '../services/tmuxLauncher';
 
 const props = defineProps<{ api: PluginContext }>();
 
-const version = '1.0.0';
+const EARLIER_STEP_BYTES = 6 * 1024 * 1024;
+const RENDER_STEP = 200;
+
+const version = __PLUGIN_VERSION__;
 const skillCategories = ['all', 'verification', 'diagnostics', 'delivery', 'authoring', 'general'];
 
 const activeTab = ref<'sessions' | 'skills' | 'profiles'>('sessions');
 const sessionsRoot = ref('');
-const sessions = ref<Array<{ path: string; name: string; modified: number }>>([]);
+const sessions = ref<SessionListItem[]>([]);
 const sessionsLoading = ref(true);
 const sessionQuery = ref('');
 const onlyCurrentWorkspace = ref(true);
 const selectedPath = ref('');
-const session = ref<ParsedSession | null>(null);
+const session = ref<LoadedSession | null>(null);
+const sessionLoading = ref(false);
+const earlierLoading = ref(false);
+const renderLimit = ref(RENDER_STEP);
 const transcriptQuery = ref('');
 const lightbox = ref<string | null>(null);
+let sessionRequest = 0;
 
 const skills = ref<SkillItem[]>([]);
 const skillsLoading = ref(true);
@@ -346,12 +365,15 @@ const visibleMessages = computed(() => {
   if (!session.value) return [];
   const needle = transcriptQuery.value.trim().toLowerCase();
   if (!needle) return session.value.messages;
-  return session.value.messages.filter((message) => {
-    if (message.text.toLowerCase().includes(needle)) return true;
-    if (message.thinking?.toLowerCase().includes(needle)) return true;
-    return (message.toolCalls || []).some((call) => call.name.toLowerCase().includes(needle));
-  });
+  return session.value.messages.filter((message) => searchableText(message).includes(needle));
 });
+
+const renderedMessages = computed(() => {
+  const all = visibleMessages.value;
+  return all.length > renderLimit.value ? all.slice(all.length - renderLimit.value) : all;
+});
+
+const hiddenTurnCount = computed(() => Math.max(0, visibleMessages.value.length - renderedMessages.value.length));
 
 const filteredSkills = computed(() => filterSkills(skills.value, skillQuery.value, skillCategory.value));
 
@@ -359,29 +381,9 @@ const selectedPresetForLaunch = computed(
   () => presets.value.find((item) => item.id === launchPresetId.value) || null
 );
 
-function displayName(filePath: string): string {
-  return sessionDisplayName(filePath);
-}
 
-function workspaceOf(filePath: string): string {
-  return workspaceLabel(filePath);
-}
 
-function clockTime(value: number): string {
-  if (!value) return '';
-  return new Date(value).toLocaleTimeString();
-}
 
-function relativeTime(value: number): string {
-  if (!value) return '';
-  const delta = Date.now() - value;
-  const minutes = Math.round(delta / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.round(hours / 24)}d ago`;
-}
 
 function roleIcon(role: string): IconName {
   if (role === 'user') return 'terminal';
@@ -395,14 +397,6 @@ function roleLabel(role: string): string {
   return 'Tool';
 }
 
-function pretty(value: unknown): string {
-  if (typeof value === 'string') return value;
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
 
 async function reloadSessions(): Promise<void> {
   sessionsLoading.value = true;
@@ -414,11 +408,15 @@ async function reloadSessions(): Promise<void> {
 
     let slug: string | undefined;
     if (onlyCurrentWorkspace.value) {
-      const pane = await readPaneSession(props.api);
-      if (pane.sessionFile) {
-        const parts = pane.sessionFile.replace(/\\/g, '/').split('/');
-        slug = parts[parts.length - 2];
+      const file = peekPaneSession().sessionFile;
+      if (!file) {
+        sessions.value = [];
+        selectedPath.value = '';
+        session.value = null;
+        return;
       }
+      const parts = file.replace(/\\/g, '/').split('/');
+      slug = parts[parts.length - 2];
     }
 
     sessions.value = await listSessionFiles(props.api, sessionsRoot.value, slug);
@@ -431,11 +429,48 @@ async function reloadSessions(): Promise<void> {
 }
 
 async function selectSession(filePath: string): Promise<void> {
+  const request = ++sessionRequest;
   selectedPath.value = filePath;
-  session.value = await loadSession(props.api, filePath);
+  renderLimit.value = RENDER_STEP;
+  sessionLoading.value = true;
+  try {
+    const loaded = await loadSessionIncremental(props.api, filePath);
+    if (request === sessionRequest && selectedPath.value === filePath) session.value = loaded;
+  } finally {
+    if (request === sessionRequest) sessionLoading.value = false;
+  }
 }
 
+async function loadEarlier(): Promise<void> {
+  const current = session.value;
+  const request = sessionRequest;
+  if (!current || current.startOffset <= 0 || earlierLoading.value) return;
+  earlierLoading.value = true;
+  try {
+    const loaded = await loadSessionIncremental(props.api, current.filePath, {
+      historyBytes: EARLIER_STEP_BYTES,
+      before: current
+    });
+    if (request === sessionRequest && session.value === current && selectedPath.value === current.filePath) {
+      session.value = loaded;
+    }
+  } finally {
+    if (request === sessionRequest) earlierLoading.value = false;
+  }
+}
+
+
 async function reloadSkills(): Promise<void> {
+  skillsLoading.value = true;
+  try {
+    skills.value = await loadAllSkills(props.api);
+    if (!selectedSkill.value && skills.value.length) selectedSkill.value = skills.value[0];
+  } finally {
+    skillsLoading.value = false;
+  }
+}
+
+async function refreshSkills(): Promise<void> {
   skillsLoading.value = true;
   try {
     skills.value = await loadAllSkills(props.api, true);
@@ -480,9 +515,13 @@ async function copyTranscript(): Promise<void> {
 }
 
 onMounted(async () => {
-  presets.value = await discoverPresets(props.api);
-  await reloadSessions();
-  await reloadSkills();
+  await Promise.all([
+    discoverPresets(props.api).then((items) => {
+      presets.value = items;
+    }),
+    reloadSessions(),
+    reloadSkills()
+  ]);
 });
 </script>
 
@@ -710,6 +749,13 @@ onMounted(async () => {
   background: color-mix(in srgb, #f59e0b 12%, transparent);
   color: #fcd34d;
   font-size: 11px;
+}
+
+.omp-banner--action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .omp-turns {

@@ -2,6 +2,7 @@
 import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 
 const PLATFORM = os.platform();
@@ -9,7 +10,7 @@ const IS_WINDOWS = PLATFORM === 'win32';
 const IS_MACOS = PLATFORM === 'darwin';
 const HOME = os.homedir();
 const SESSION_FILE_PATTERN = /^\d{4}-\d{2}-\d{2}T[\dTZ:.\-]*_[0-9a-f-]+\.jsonl$/i;
-const METRIC_CACHE_FILE = path.join(os.tmpdir(), 'dinotty-omp-metrics.json');
+const METRIC_CACHE_DIR = path.join(os.tmpdir(), 'dinotty-omp-metrics');
 const METRIC_CACHE_LIMIT = 24;
 const WINDOWS_FRESHNESS_MS = 90_000;
 
@@ -34,12 +35,28 @@ function run(file, args, timeout = 2000) {
   }
 }
 
+const jsonCache = new Map();
+
 function readJson(filePath) {
+  if (jsonCache.has(filePath)) return jsonCache.get(filePath);
+  let value = null;
   try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    value = JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch {
-    return null;
+    value = null;
   }
+  jsonCache.set(filePath, value);
+  return value;
+}
+
+function ledgerEntryFor(paneId) {
+  const ledger = readJson(path.join(HOME, '.config', 'dinotty', 'session-ledger.json'));
+  const entries = ledger?.entries;
+  if (!Array.isArray(entries)) return null;
+  for (const item of entries) {
+    if (item && item.pane_id === paneId) return item;
+  }
+  return null;
 }
 
 function isAlive(pid) {
@@ -111,36 +128,56 @@ function descendantsOf(rootPid, table) {
   return found;
 }
 
+let tmuxProbe = null;
+
 function tmuxAvailable() {
-  return Boolean(run('tmux', ['-V'], 1000));
+  if (tmuxProbe === null) tmuxProbe = Boolean(run('tmux', ['-V'], 1000));
+  return tmuxProbe;
+}
+
+const ttyCache = new Map();
+
+function ttyOf(pid) {
+  const key = String(pid);
+  if (ttyCache.has(key)) return ttyCache.get(key);
+  const tty = run('ps', ['-o', 'tty=', '-p', key]).trim();
+  const value = tty && tty !== '?' ? tty : '';
+  ttyCache.set(key, value);
+  return value;
+}
+
+function clientTargetForTty(tty) {
+  if (!tty || !tmuxAvailable()) return '';
+  const clients = run('tmux', ['list-clients', '-F', '#{client_tty}\t#{client_session}']);
+  for (const line of clients.split('\n')) {
+    const [clientTty, sessionName] = line.split('\t');
+    if (!clientTty || !sessionName) continue;
+    const trimmed = clientTty.trim();
+    if (trimmed !== `/dev/${tty}` && trimmed !== tty) continue;
+    return trimmed;
+  }
+  return '';
+}
+
+function tmuxField(target, field) {
+  if (!target || !tmuxAvailable()) return '';
+  const value = run('tmux', ['display-message', '-p', '-t', target, '-F', field]);
+  return value.split('\n')[0].trim();
 }
 
 function resolveWorkspaceFromPane(paneId, cwdHint) {
   const fallback = normalizeDir(cwdHint);
   if (IS_WINDOWS || !paneId) return fallback;
 
-  const ledger = readJson(path.join(HOME, '.config', 'dinotty', 'session-ledger.json'));
-  const entry = ledger?.entries?.find((item) => item.pane_id === paneId);
+  const entry = ledgerEntryFor(paneId);
   if (!entry?.pid) return fallback;
 
   const shellPid = entry.pid;
-  const tty = run('ps', ['-o', 'tty=', '-p', String(shellPid)]).trim();
-  if (tty && tty !== '?' && tmuxAvailable()) {
-    const clients = run('tmux', ['list-clients', '-F', '#{client_tty}\t#{client_session}']);
-    for (const line of clients.split('\n')) {
-      const [clientTty, sessionName] = line.split('\t');
-      if (!clientTty || !sessionName) continue;
-      if (clientTty.trim() !== `/dev/${tty}` && clientTty.trim() !== tty) continue;
-      const panePath = run('tmux', [
-        'list-panes',
-        '-t',
-        sessionName.trim(),
-        '-F',
-        '#{pane_current_path}'
-      ]).split('\n')[0];
-      const resolved = normalizeDir(panePath);
-      if (resolved) return resolved;
-    }
+  const clientTty = clientTargetForTty(ttyOf(shellPid));
+  const panePath = tmuxField(clientTty, '#{pane_current_path}');
+  if (panePath) {
+    const resolved = normalizeDir(panePath);
+    if (resolved) return resolved;
   }
 
   try {
@@ -154,33 +191,23 @@ function resolveWorkspaceFromPane(paneId, cwdHint) {
 function pidsForPane(paneId) {
   if (IS_WINDOWS || !paneId) return [];
 
-  const ledger = readJson(path.join(HOME, '.config', 'dinotty', 'session-ledger.json'));
-  const entry = ledger?.entries?.find((item) => item.pane_id === paneId);
+  const entry = ledgerEntryFor(paneId);
   if (!entry?.pid) return [];
 
   const shellPid = entry.pid;
   const procTable = listProcesses();
   const candidatePids = [shellPid, ...descendantsOf(shellPid, procTable).map((p) => p.pid)];
 
-  const tty = run('ps', ['-o', 'tty=', '-p', String(shellPid)]).trim();
-  if (tty && tty !== '?' && tmuxAvailable()) {
-    const clients = run('tmux', ['list-clients', '-F', '#{client_tty}\t#{client_session}']);
-    for (const line of clients.split('\n')) {
-      const [clientTty, sessionName] = line.split('\t');
-      if (!clientTty || !sessionName) continue;
-      if (clientTty.trim() !== `/dev/${tty}` && clientTty.trim() !== tty) continue;
-      const panePids = run('tmux', [
-        'list-panes',
-        '-t',
-        sessionName.trim(),
-        '-F',
-        '#{pane_pid}'
-      ]).split('\n').filter(Boolean).map(Number);
-      for (const ppid of panePids) {
-        if (!candidatePids.includes(ppid)) candidatePids.push(ppid);
-        for (const child of descendantsOf(ppid, procTable)) {
-          if (!candidatePids.includes(child.pid)) candidatePids.push(child.pid);
-        }
+  const clientTty = clientTargetForTty(ttyOf(shellPid));
+  if (clientTty) {
+    const panePids = run('tmux', ['list-panes', '-t', clientTty, '-F', '#{pane_pid}'])
+      .split('\n')
+      .filter(Boolean)
+      .map(Number);
+    for (const ppid of panePids) {
+      if (!candidatePids.includes(ppid)) candidatePids.push(ppid);
+      for (const child of descendantsOf(ppid, procTable)) {
+        if (!candidatePids.includes(child.pid)) candidatePids.push(child.pid);
       }
     }
   }
@@ -287,22 +314,48 @@ function resolveSessionFile(workspaceDir, pids) {
   return fallback.path;
 }
 
-function loadMetricCache() {
-  const cache = readJson(METRIC_CACHE_FILE);
-  return cache && typeof cache === 'object' ? cache : {};
+function metricCachePath(sessionFile) {
+  const digest = createHash('sha256').update(sessionFile).digest('hex');
+  return path.join(METRIC_CACHE_DIR, `${digest}.json`);
 }
 
-function saveMetricCache(cache) {
-  const keys = Object.keys(cache);
-  if (keys.length > METRIC_CACHE_LIMIT) {
-    keys
-      .sort((a, b) => (cache[a].touchedAt || 0) - (cache[b].touchedAt || 0))
-      .slice(0, keys.length - METRIC_CACHE_LIMIT)
-      .forEach((key) => delete cache[key]);
-  }
+function loadMetricCache(sessionFile) {
   try {
-    fs.writeFileSync(METRIC_CACHE_FILE, JSON.stringify(cache), { mode: 0o600 });
-  } catch {}
+    const value = JSON.parse(fs.readFileSync(metricCachePath(sessionFile), 'utf8'));
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveMetricCache(sessionFile, state) {
+  const cachePath = metricCachePath(sessionFile);
+  const tmp = `${cachePath}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    fs.mkdirSync(METRIC_CACHE_DIR, { recursive: true, mode: 0o700 });
+    fs.writeFileSync(tmp, JSON.stringify(state), { mode: 0o600 });
+    fs.renameSync(tmp, cachePath);
+    const entries = fs.readdirSync(METRIC_CACHE_DIR)
+      .map((name) => {
+        const full = path.join(METRIC_CACHE_DIR, name);
+        try {
+          return { full, mtimeMs: fs.statSync(full).mtimeMs };
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.mtimeMs - a.mtimeMs);
+    for (const entry of entries.slice(METRIC_CACHE_LIMIT)) {
+      try {
+        fs.unlinkSync(entry.full);
+      } catch {}
+    }
+  } catch {
+    try {
+      fs.unlinkSync(tmp);
+    } catch {}
+  }
 }
 
 function emptyMetrics() {
@@ -329,6 +382,7 @@ function applyLine(state, line) {
   } catch {
     return;
   }
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return;
 
   if (record.type === 'model_change') {
     if (record.model) state.model = String(record.model);
@@ -399,61 +453,43 @@ function applyLine(state, line) {
 }
 
 function readMetrics(sessionFile) {
-  if (!sessionFile || !fs.existsSync(sessionFile)) return null;
-
-  let stat;
+  let fd;
   try {
-    stat = fs.statSync(sessionFile);
-  } catch {
-    return null;
-  }
-
-  const cache = loadMetricCache();
-  const cached = cache[sessionFile];
-  let state =
-    cached && cached.offset <= stat.size && cached.mtimeMs <= stat.mtimeMs
-      ? { ...emptyMetrics(), ...cached, pending: Array.isArray(cached.pending) ? cached.pending : [] }
-      : emptyMetrics();
-
-  const start = state.offset > 0 && state.offset <= stat.size ? state.offset : 0;
-  if (start === 0) state = emptyMetrics();
-  if (start >= stat.size && cached) {
+    fd = fs.openSync(sessionFile, 'r');
+    const stat = fs.fstatSync(fd);
+    if (!stat.isFile()) return null;
+    const identity = `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
+    const cached = loadMetricCache(sessionFile);
+    if (cached?.identity === identity) return finalizeMetrics(cached);
+    const state = emptyMetrics();
+    const buffer = Buffer.allocUnsafe(65536);
+    let offset = 0;
+    let parts = [];
+    while (offset < stat.size) {
+      const length = fs.readSync(fd, buffer, 0, Math.min(buffer.length, stat.size - offset), offset);
+      if (!length) return null;
+      offset += length;
+      let start = 0;
+      for (;;) {
+        const end = buffer.indexOf(10, start);
+        if (end < 0 || end >= length) break;
+        const segment = buffer.subarray(start, end);
+        const line = parts.length ? Buffer.concat([...parts, segment]).toString('utf8') : segment.toString('utf8');
+        applyLine(state, line.trim());
+        parts = [];
+        start = end + 1;
+      }
+      if (start < length) parts.push(Buffer.from(buffer.subarray(start, length)));
+    }
+    if (parts.length) applyLine(state, Buffer.concat(parts).toString('utf8').trim());
+    state.identity = identity;
+    saveMetricCache(sessionFile, state);
     return finalizeMetrics(state);
-  }
-
-  let handle;
-  try {
-    handle = fs.openSync(sessionFile, 'r');
   } catch {
     return null;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
   }
-
-  const length = stat.size - start;
-  const buffer = Buffer.allocUnsafe(length);
-  try {
-    fs.readSync(handle, buffer, 0, length, start);
-  } catch {
-    fs.closeSync(handle);
-    return null;
-  }
-  fs.closeSync(handle);
-
-  const chunk = buffer.toString('utf8');
-  const lastBreak = chunk.lastIndexOf('\n');
-  const complete = lastBreak >= 0 ? chunk.slice(0, lastBreak) : '';
-  const consumed = lastBreak >= 0 ? Buffer.byteLength(complete, 'utf8') + 1 : 0;
-
-  for (const line of complete.split('\n')) {
-    applyLine(state, line.trim());
-  }
-
-  state.offset = start + consumed;
-  state.mtimeMs = stat.mtimeMs;
-  state.touchedAt = Date.now();
-  cache[sessionFile] = state;
-  saveMetricCache(cache);
-
-  return finalizeMetrics(state);
 }
 
 function finalizeMetrics(state) {
@@ -515,6 +551,100 @@ function listTmuxPanes() {
   return panes;
 }
 
+function readSessionMeta(sessionFile) {
+  let head = '';
+  try {
+    const fd = fs.openSync(sessionFile, 'r');
+    try {
+      const buf = Buffer.allocUnsafe(8192);
+      const read = fs.readSync(fd, buf, 0, buf.length, 0);
+      head = buf.subarray(0, read).toString('utf8');
+    } finally {
+      fs.closeSync(fd);
+    }
+  } catch {
+    return { sessionId: '', cwd: '' };
+  }
+
+  for (const line of head.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    let record;
+    try {
+      record = JSON.parse(trimmed);
+    } catch {
+      continue;
+    }
+    if (!record || typeof record !== 'object' || Array.isArray(record)) continue;
+    if (record.type === 'session') {
+      return { sessionId: record.id || '', cwd: record.cwd || '' };
+    }
+  }
+  return { sessionId: '', cwd: '' };
+}
+
+function alignToLineStart(fd, offset) {
+  const buffer = Buffer.allocUnsafe(65536);
+  let end = offset;
+  while (end > 0) {
+    const start = Math.max(0, end - buffer.length);
+    const length = fs.readSync(fd, buffer, 0, end - start, start);
+    const index = buffer.subarray(0, length).lastIndexOf(10);
+    if (index >= 0) return start + index + 1;
+    end = start;
+  }
+  return 0;
+}
+
+function readChunk(sessionFile, requestedStart, maxBytes) {
+  let fd;
+  try {
+    fd = fs.openSync(sessionFile, 'r');
+    const stat = fs.fstatSync(fd);
+    if (!stat.isFile()) return null;
+    const size = stat.size;
+    const requested = Number(requestedStart);
+    const requestedOffset = Number.isFinite(requested) ? Math.floor(requested) : 0;
+    const clampedOffset = Math.max(0, Math.min(requestedOffset, size));
+    const start = clampedOffset >= size ? size : alignToLineStart(fd, clampedOffset);
+    const limit = Number(maxBytes);
+    const want = Math.min(Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 4096, 4 * 1024 * 1024);
+    const target = Math.min(size, start + want);
+    const parts = [];
+    let end = start;
+    let newlineEnd = -1;
+    while (end < size) {
+      const readLength = Math.min(65536, size - end, end < target ? target - end : size - end);
+      const buffer = Buffer.allocUnsafe(readLength);
+      const length = fs.readSync(fd, buffer, 0, readLength, end);
+      if (!length) break;
+      const bytes = buffer.subarray(0, length);
+      parts.push(bytes);
+      const newline = bytes.lastIndexOf(10);
+      if (newline >= 0) newlineEnd = end - start + newline + 1;
+      end += length;
+      if (end >= target && newlineEnd >= 0) break;
+    }
+
+    if (newlineEnd < 0) newlineEnd = end - start;
+    const content = Buffer.concat(parts).subarray(0, newlineEnd);
+    const finalEnd = start + content.length;
+    const meta = readSessionMeta(sessionFile);
+    return {
+      start,
+      end: finalEnd,
+      size,
+      eof: finalEnd >= size,
+      content: content.toString('utf8'),
+      ...meta
+    };
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
+}
+
 function emit(value) {
   process.stdout.write(JSON.stringify(value) + '\n');
 }
@@ -524,6 +654,36 @@ function main() {
 
   if (action === 'pane' || action === 'active') {
     emit(describePane(paneId, cwdHint));
+    return 0;
+  }
+
+  if (action === 'chunk') {
+    const file = paneId;
+    if (!file || !fs.existsSync(file)) {
+      emit({ error: 'session file not found' });
+      return 1;
+    }
+    const chunk = readChunk(file, cwdHint, process.argv[5]);
+    if (!chunk) {
+      emit({ error: 'session file unreadable' });
+      return 1;
+    }
+    emit(chunk);
+    return 0;
+  }
+
+  if (action === 'file-metrics') {
+    const file = paneId;
+    if (!file || !fs.existsSync(file)) {
+      emit({ error: 'session file not found' });
+      return 1;
+    }
+    const summary = readMetrics(file);
+    if (!summary) {
+      emit({ error: 'session file unreadable' });
+      return 1;
+    }
+    emit(summary);
     return 0;
   }
 
