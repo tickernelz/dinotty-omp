@@ -13,6 +13,7 @@ export interface LaunchOmpOptions {
 
 const PRESET_READY_ATTEMPTS = 20;
 const PRESET_READY_DELAY_MS = 500;
+const PRESET_SETTLE_DELAY_MS = 750;
 export function sanitizeSessionName(rawCwd: string, suffix?: string): string {
   if (!rawCwd) return suffix ? `omp-workspace-${suffix}` : 'omp-workspace';
   const trimmed = rawCwd.replace(/[\\/]+$/, '');
@@ -51,10 +52,14 @@ function schedulePresetSwitch(
     }
     attempts += 1;
     const pane = await readPaneSession(ctx, { paneId, cwd });
-    if (pane.state === 'running') {
+    if (pane.isRunning && (pane.state === 'starting' || pane.state === 'running')) {
       const command = buildPresetSwitchCommand(preset);
-      if (command) ctx.terminal.send(paneId, command);
-      ctx.ui.notify(`OMP preset ${preset.id} applied`, 'info');
+      if (command) {
+        window.setTimeout(() => {
+          ctx.terminal.send(paneId, command);
+          ctx.ui.notify(`OMP preset ${preset.id} applied`, 'info');
+        }, PRESET_SETTLE_DELAY_MS);
+      }
       return;
     }
     window.setTimeout(() => void check(), PRESET_READY_DELAY_MS);
