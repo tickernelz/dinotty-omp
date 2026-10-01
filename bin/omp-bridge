@@ -661,6 +661,15 @@ function readChunk(sessionFile, requestedStart, maxBytes) {
   }
 }
 
+function paneClientPids(paneId) {
+  const candidates = new Set(pidsForPane(paneId));
+  if (!candidates.size) return [];
+  return liveOmpClients()
+    .filter((client) => candidates.has(client.pid))
+    .map((client) => client.pid)
+    .sort((a, b) => a - b);
+}
+
 function listModelPresets() {
   const executable = ompCli();
   if (!executable) return null;
@@ -727,6 +736,11 @@ function main() {
       return 1;
     }
     emit(summary);
+    return 0;
+  }
+
+  if (action === 'pane-client-pids') {
+    emit(paneClientPids(paneId));
     return 0;
   }
 

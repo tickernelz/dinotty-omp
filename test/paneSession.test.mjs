@@ -45,10 +45,10 @@ function restoreClock() {
   timers = [];
 }
 
-function session(cwd, cost, state = 'running') {
+function session(cwd, cost, state = 'running', status = 'idle') {
   return {
     cwd,
-    sessionFile: `${cwd}/.omp/session.jsonl`,
+    sessionFile: state === 'inactive' ? '' : `${cwd}/.omp/session.jsonl`,
     isRunning: state !== 'inactive',
     state,
     summary: state === 'running' ? {
@@ -58,7 +58,7 @@ function session(cwd, cost, state = 'running') {
       totalTokens: 10,
       totalCost: cost,
       turns: 1,
-      status: 'idle'
+      status
     } : null
   };
 }
@@ -134,6 +134,10 @@ function context() {
       cwd = nextCwd;
       paneListeners[0]?.(nextPaneId);
     },
+    setPane(nextPaneId, nextCwd) {
+      paneId = nextPaneId;
+      cwd = nextCwd;
+    },
     resolve(nextPaneId, value) {
       const index = pending.findIndex((item) => item.args[1] === nextPaneId);
       assert.notEqual(index, -1);
@@ -169,6 +173,37 @@ test('clears the old pane and rejects a late response after switching panes', as
   await flush();
   assert.equal(paneSession.peekPaneSession().cwd, '/b');
   assert.equal(snapshots.at(-1).summary.totalCost, 2);
+});
+test('detects silent pane changes with the cheap pane-id check', async () => {
+  const fake = context();
+  paneSession.subscribePaneSession(fake.ctx, {});
+  fake.resolve('A', session('/a', 1));
+  await flush();
+  fake.setPane('B', '/b');
+  await advance(249);
+  assert.equal(fake.calls.length, 1);
+  await advance(1);
+  assert.equal(fake.calls.length, 2);
+  fake.resolve('B', session('/b', 2));
+  await flush();
+  assert.equal(paneSession.peekPaneSession().cwd, '/b');
+});
+
+test('re-probes inactive panes and active OMP states on short safety bounds', async () => {
+  const fake = context();
+  paneSession.subscribePaneSession(fake.ctx, {});
+  fake.resolve('A', session('/a', 0, 'inactive'));
+  await flush();
+  await advance(2_999);
+  assert.equal(fake.calls.length, 1);
+  await advance(1);
+  assert.equal(fake.calls.length, 2);
+  fake.resolve('A', session('/a', 1, 'running', 'running_tool'));
+  await flush();
+  await advance(2_499);
+  assert.equal(fake.calls.length, 2);
+  await advance(1);
+  assert.equal(fake.calls.length, 3);
 });
 
 test('does not repopulate the store when a request resolves after dispose', async () => {

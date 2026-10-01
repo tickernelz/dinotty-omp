@@ -14,6 +14,7 @@ export interface LaunchOmpOptions {
 const PRESET_READY_ATTEMPTS = 20;
 const PRESET_READY_DELAY_MS = 500;
 const PRESET_SETTLE_DELAY_MS = 750;
+
 export function sanitizeSessionName(rawCwd: string, suffix?: string): string {
   if (!rawCwd) return suffix ? `omp-workspace-${suffix}` : 'omp-workspace';
   const trimmed = rawCwd.replace(/[\\/]+$/, '');
@@ -37,13 +38,27 @@ function quoteForShell(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
+async function readPaneClientPids(ctx: PluginContext, paneId: string): Promise<number[]> {
+  try {
+    const result = await ctx.exec.run(['pane-client-pids', paneId]);
+    if (result.code !== 0 || !result.stdout.trim()) return [];
+    const parsed: unknown = JSON.parse(result.stdout.trim());
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((pid): pid is number => Number.isSafeInteger(pid) && pid > 0);
+  } catch {
+    return [];
+  }
+}
+
 function schedulePresetSwitch(
   ctx: PluginContext,
   paneId: string,
   cwd: string,
-  preset?: PresetItem | null
+  preset?: PresetItem | null,
+  baselinePids: number[] = []
 ): void {
   if (!preset) return;
+  const baseline = new Set(baselinePids);
   let attempts = 0;
   const check = async (): Promise<void> => {
     if (attempts >= PRESET_READY_ATTEMPTS) {
@@ -51,8 +66,13 @@ function schedulePresetSwitch(
       return;
     }
     attempts += 1;
-    const pane = await readPaneSession(ctx, { paneId, cwd });
-    if (pane.isRunning && (pane.state === 'starting' || pane.state === 'running')) {
+    const [pane, pids] = await Promise.all([
+      readPaneSession(ctx, { paneId, cwd }),
+      readPaneClientPids(ctx, paneId)
+    ]);
+    const freshClient = pids.some((pid) => !baseline.has(pid));
+    const liveStartup = pane.isRunning && (pane.state === 'starting' || pane.state === 'running');
+    if (liveStartup && freshClient) {
       const command = buildPresetSwitchCommand(preset);
       if (command) {
         window.setTimeout(() => {
@@ -66,6 +86,7 @@ function schedulePresetSwitch(
   };
   window.setTimeout(() => void check(), PRESET_READY_DELAY_MS);
 }
+
 export async function launchOmp(
   ctx: PluginContext,
   options: LaunchOmpOptions = {}
@@ -93,7 +114,7 @@ export async function launchOmp(
       title: `OMP: ${presetLabel}`
     });
 
-    schedulePresetSwitch(ctx, paneId, cwd, options.preset);
+    schedulePresetSwitch(ctx, paneId, cwd, options.preset, []);
     ctx.ui.notify(
       useTmux
         ? `OMP started in tmux session ${sessionName}`
@@ -113,6 +134,7 @@ export async function launchOmp(
     return null;
   }
 
+  const baselinePids = await readPaneClientPids(ctx, paneId);
   const sessionSuffix =
     paneId.replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 8) ||
     Math.random().toString(36).slice(2, 10);
@@ -122,7 +144,7 @@ export async function launchOmp(
     : directCommand;
 
   ctx.terminal.send(paneId, `${command}\n`);
-  schedulePresetSwitch(ctx, paneId, cwd, options.preset);
+  schedulePresetSwitch(ctx, paneId, cwd, options.preset, baselinePids);
   ctx.ui.notify(`OMP started in a split pane with preset ${presetLabel}`, 'info');
   return paneId;
 }
@@ -138,9 +160,10 @@ export async function launchOmpInActivePane(
   }
 
   const cwd = ctx.terminal.activeCwd() || '';
+  const baselinePids = await readPaneClientPids(ctx, paneId);
   const command = ['omp', ...buildOmpArgs(preset)].map(quoteForShell).join(' ');
   ctx.terminal.send(paneId, `${command}\n`);
-  schedulePresetSwitch(ctx, paneId, cwd, preset);
+  schedulePresetSwitch(ctx, paneId, cwd, preset, baselinePids);
   ctx.ui.notify(`Launching OMP with preset ${preset?.id || DEFAULT_PRESET_ID}`, 'info');
   return true;
 }

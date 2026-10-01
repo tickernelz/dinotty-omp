@@ -12,6 +12,7 @@ export const EMPTY_PANE_SESSION: PaneSession = {
 const PANE_CHECK_MS = 250;
 const SETTLED_SAFETY_MS = 30_000;
 const ACTIVE_SAFETY_MS = 2_500;
+const INACTIVE_SAFETY_MS = 3_000;
 const STARTING_SAFETY_MS = 3_000;
 const MIN_REFRESH_GAP_MS = 600;
 export interface PaneSessionSubscriber {
@@ -127,8 +128,7 @@ function scheduleNext(): void {
       ? ACTIVE_SAFETY_MS
       : current.sessionFile
         ? SETTLED_SAFETY_MS
-        : 0;
-  if (!dirty && safety === 0) return;
+        : INACTIVE_SAFETY_MS;
   const delay = dirty
     ? forcePending ? 0 : Math.max(0, lastRefreshAt + MIN_REFRESH_GAP_MS - now)
     : Math.max(0, lastRefreshAt + safety - now);

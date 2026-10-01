@@ -15,6 +15,7 @@ function context() {
   const notifications = [];
   const timers = [];
   let probes = 0;
+  let clientProbes = 0;
   globalThis.window = {
     setTimeout(callback) {
       timers.push(callback);
@@ -28,7 +29,11 @@ function context() {
       send: (paneId, text) => sent.push([paneId, text])
     },
     exec: {
-      run: async () => {
+      run: async (args) => {
+        if (args[0] === 'pane-client-pids') {
+          clientProbes += 1;
+          return { code: 0, stdout: JSON.stringify(clientProbes === 1 ? [] : [123]), stderr: '' };
+        }
         probes += 1;
         const running = probes >= 2;
         return {
@@ -57,6 +62,8 @@ for (const preset of presets) {
     assert.equal(await launcher.launchOmpInActivePane(fake.ctx, preset), true);
     assert.deepEqual(fake.sent, [['pane-a', "'omp'\n"]]);
     await fake.timers.shift()();
+    await Promise.resolve();
+    await Promise.resolve();
     await Promise.resolve();
     assert.equal(fake.sent.length, 1);
     await fake.timers.shift()();
