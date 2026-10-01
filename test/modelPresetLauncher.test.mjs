@@ -10,7 +10,7 @@ const presets = [
   { id: 'sub2api-gpt61', label: 'sub2api-gpt61', modelRoles: { default: 'provider/b' }, defaultThinkingLevel: 'xhigh', isDefault: false }
 ];
 
-function context() {
+function context(inactive = false) {
   const sent = [];
   const notifications = [];
   const timers = [];
@@ -30,9 +30,9 @@ function context() {
     },
     exec: {
       run: async (args) => {
-        if (args[0] === 'pane-client-pids') {
+        if (args[0] === 'live-omp-clients') {
           clientProbes += 1;
-          return { code: 0, stdout: JSON.stringify(clientProbes === 1 ? [] : [123]), stderr: '' };
+          return { code: 0, stdout: JSON.stringify(clientProbes === 1 ? [] : [{ pid: 123, projectDir: '/workspace' }]), stderr: '' };
         }
         probes += 1;
         const running = probes >= 2;
@@ -40,9 +40,9 @@ function context() {
           code: 0,
           stdout: JSON.stringify({
             cwd: '/workspace',
-            sessionFile: running ? '/session.jsonl' : '',
-            isRunning: true,
-            state: running ? 'running' : 'starting',
+            sessionFile: inactive ? '' : running ? '/session.jsonl' : '',
+            isRunning: inactive ? false : true,
+            state: inactive ? 'inactive' : running ? 'running' : 'starting',
             summary: null
           }),
           stderr: ''
@@ -73,3 +73,14 @@ for (const preset of presets) {
     assert.equal(fake.timers.length, 0);
   });
 }
+test('applies a preset when a new matching client appears before a transcript', async () => {
+  const fake = context(true);
+  assert.equal(await launcher.launchOmpInActivePane(fake.ctx, presets[1]), true);
+  await fake.timers.shift()();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await fake.timers.shift()();
+  await Promise.resolve();
+  assert.equal(fake.sent.filter((entry) => entry[1].startsWith('/modelpreset')).length, 1);
+});

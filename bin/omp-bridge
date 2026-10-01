@@ -670,6 +670,10 @@ function paneClientPids(paneId) {
     .sort((a, b) => a - b);
 }
 
+function listLiveOmpClients() {
+  return liveOmpClients().map((client) => ({ pid: client.pid, projectDir: client.projectDir }));
+}
+
 function listModelPresets() {
   const executable = ompCli();
   if (!executable) return null;
@@ -741,6 +745,11 @@ function main() {
 
   if (action === 'pane-client-pids') {
     emit(paneClientPids(paneId));
+    return 0;
+  }
+
+  if (action === 'live-omp-clients') {
+    emit(listLiveOmpClients());
     return 0;
   }
 

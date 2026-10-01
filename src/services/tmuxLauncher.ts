@@ -11,6 +11,11 @@ export interface LaunchOmpOptions {
   cwd?: string;
 }
 
+interface LiveOmpClient {
+  pid: number;
+  projectDir: string;
+}
+
 const PRESET_READY_ATTEMPTS = 20;
 const PRESET_READY_DELAY_MS = 500;
 const PRESET_SETTLE_DELAY_MS = 750;
@@ -38,13 +43,25 @@ function quoteForShell(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
-async function readPaneClientPids(ctx: PluginContext, paneId: string): Promise<number[]> {
+function normalizeWorkspace(value: string): string {
+  const normalized = value.replace(/\\/g, '/').replace(/\/+$/, '');
+  return /^[A-Za-z]:/.test(normalized) ? normalized.toLowerCase() : normalized;
+}
+
+async function readLiveOmpClients(ctx: PluginContext): Promise<LiveOmpClient[]> {
   try {
-    const result = await ctx.exec.run(['pane-client-pids', paneId]);
+    const result = await ctx.exec.run(['live-omp-clients']);
     if (result.code !== 0 || !result.stdout.trim()) return [];
     const parsed: unknown = JSON.parse(result.stdout.trim());
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((pid): pid is number => Number.isSafeInteger(pid) && pid > 0);
+    const clients: LiveOmpClient[] = [];
+    for (const value of parsed) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+      if (!('pid' in value) || typeof value.pid !== 'number' || !Number.isSafeInteger(value.pid) || value.pid <= 0) continue;
+      if (!('projectDir' in value) || typeof value.projectDir !== 'string') continue;
+      clients.push({ pid: value.pid, projectDir: value.projectDir });
+    }
+    return clients;
   } catch {
     return [];
   }
@@ -54,11 +71,12 @@ function schedulePresetSwitch(
   ctx: PluginContext,
   paneId: string,
   cwd: string,
-  preset?: PresetItem | null,
-  baselinePids: number[] = []
+  preset: PresetItem | null | undefined,
+  baselineClients: LiveOmpClient[]
 ): void {
   if (!preset) return;
-  const baseline = new Set(baselinePids);
+  const baseline = new Set(baselineClients.map((client) => client.pid));
+  const workspace = normalizeWorkspace(cwd);
   let attempts = 0;
   const check = async (): Promise<void> => {
     if (attempts >= PRESET_READY_ATTEMPTS) {
@@ -66,13 +84,14 @@ function schedulePresetSwitch(
       return;
     }
     attempts += 1;
-    const [pane, pids] = await Promise.all([
+    const [pane, clients] = await Promise.all([
       readPaneSession(ctx, { paneId, cwd }),
-      readPaneClientPids(ctx, paneId)
+      readLiveOmpClients(ctx)
     ]);
-    const freshClient = pids.some((pid) => !baseline.has(pid));
-    const liveStartup = pane.isRunning && (pane.state === 'starting' || pane.state === 'running');
-    if (liveStartup && freshClient) {
+    const freshClient = clients.some(
+      (client) => !baseline.has(client.pid) && normalizeWorkspace(client.projectDir) === workspace
+    );
+    if (freshClient) {
       const command = buildPresetSwitchCommand(preset);
       if (command) {
         window.setTimeout(() => {
@@ -97,6 +116,7 @@ export async function launchOmp(
   const ompArgs = buildOmpArgs(options.preset);
   const presetLabel = options.preset?.id || DEFAULT_PRESET_ID;
   const useTmux = Boolean(host?.tmux) && host?.platform !== 'win32';
+  const baselineClients = await readLiveOmpClients(ctx);
 
   const directCommand = ['omp', ...ompArgs].map(quoteForShell).join(' ');
   const innerCommand = `${directCommand}; exec "$SHELL"`;
@@ -114,7 +134,7 @@ export async function launchOmp(
       title: `OMP: ${presetLabel}`
     });
 
-    schedulePresetSwitch(ctx, paneId, cwd, options.preset, []);
+    schedulePresetSwitch(ctx, paneId, cwd, options.preset, baselineClients);
     ctx.ui.notify(
       useTmux
         ? `OMP started in tmux session ${sessionName}`
@@ -134,7 +154,6 @@ export async function launchOmp(
     return null;
   }
 
-  const baselinePids = await readPaneClientPids(ctx, paneId);
   const sessionSuffix =
     paneId.replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 8) ||
     Math.random().toString(36).slice(2, 10);
@@ -144,7 +163,7 @@ export async function launchOmp(
     : directCommand;
 
   ctx.terminal.send(paneId, `${command}\n`);
-  schedulePresetSwitch(ctx, paneId, cwd, options.preset, baselinePids);
+  schedulePresetSwitch(ctx, paneId, cwd, options.preset, baselineClients);
   ctx.ui.notify(`OMP started in a split pane with preset ${presetLabel}`, 'info');
   return paneId;
 }
@@ -160,10 +179,10 @@ export async function launchOmpInActivePane(
   }
 
   const cwd = ctx.terminal.activeCwd() || '';
-  const baselinePids = await readPaneClientPids(ctx, paneId);
+  const baselineClients = await readLiveOmpClients(ctx);
   const command = ['omp', ...buildOmpArgs(preset)].map(quoteForShell).join(' ');
   ctx.terminal.send(paneId, `${command}\n`);
-  schedulePresetSwitch(ctx, paneId, cwd, preset, baselinePids);
+  schedulePresetSwitch(ctx, paneId, cwd, preset, baselineClients);
   ctx.ui.notify(`Launching OMP with preset ${preset?.id || DEFAULT_PRESET_ID}`, 'info');
   return true;
 }
