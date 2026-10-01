@@ -1,60 +1,60 @@
-const p = window.__DINOTTY_VUE__;
-if (!p)
+const m = window.__DINOTTY_VUE__;
+if (!m)
   throw new Error("host vue bridge missing: window.__DINOTTY_VUE__ not assigned");
-const T = p.ref;
-p.reactive;
-const E = p.computed;
-p.watch;
-const me = p.onMounted;
-p.onUnmounted;
-const ze = p.onBeforeUnmount;
-p.nextTick;
-p.h;
-const Gt = p.defineComponent;
-p.getCurrentInstance;
-const f = p.toDisplayString, R = p.normalizeClass;
-p.normalizeStyle;
-const g = p.openBlock, v = p.createElementBlock, a = p.createElementVNode, Oe = p.createBlock, k = p.createVNode, I = p.createCommentVNode, j = p.createTextVNode;
-p.withCtx;
-const X = p.withDirectives, st = p.withModifiers;
-p.withKeys;
-const Ht = p.vModelText, he = p.vModelSelect, Re = p.vModelCheckbox;
-p.vModelRadio;
-const Ne = p.vShow, De = p.mergeProps, F = p.renderList;
-p.renderSlot;
-p.resolveComponent;
-p.resolveDirective;
-const Fe = p.resolveDynamicComponent;
-p.resolveTransitionHooks;
-p.setBlockTracking;
-p.useSlots;
-p.useAttrs;
-p.isRef;
-const He = p.unref;
-p.toRef;
-p.toRefs;
-p.customRef;
-p.triggerRef;
-p.shallowRef;
-p.shallowReactive;
-p.readonly;
-p.proxyRefs;
-p.markRaw;
-p.toRaw;
-p.effectScope;
-p.EffectScope;
-p.watchEffect;
-p.watchPostEffect;
-p.watchSyncEffect;
-p.Teleport;
-p.Suspense;
-p.KeepAlive;
-p.Transition;
-p.TransitionGroup;
-const A = p.Fragment;
-p.Static;
-p.Text;
-p.Comment;
+const T = m.ref;
+m.reactive;
+const E = m.computed;
+m.watch;
+const me = m.onMounted;
+m.onUnmounted;
+const Le = m.onBeforeUnmount;
+m.nextTick;
+m.h;
+const Gt = m.defineComponent;
+m.getCurrentInstance;
+const f = m.toDisplayString, R = m.normalizeClass;
+m.normalizeStyle;
+const g = m.openBlock, v = m.createElementBlock, a = m.createElementVNode, ze = m.createBlock, k = m.createVNode, I = m.createCommentVNode, j = m.createTextVNode;
+m.withCtx;
+const X = m.withDirectives, st = m.withModifiers;
+m.withKeys;
+const Ht = m.vModelText, he = m.vModelSelect, Oe = m.vModelCheckbox;
+m.vModelRadio;
+const Re = m.vShow, Ne = m.mergeProps, F = m.renderList;
+m.renderSlot;
+m.resolveComponent;
+m.resolveDirective;
+const De = m.resolveDynamicComponent;
+m.resolveTransitionHooks;
+m.setBlockTracking;
+m.useSlots;
+m.useAttrs;
+m.isRef;
+const Fe = m.unref;
+m.toRef;
+m.toRefs;
+m.customRef;
+m.triggerRef;
+m.shallowRef;
+m.shallowReactive;
+m.readonly;
+m.proxyRefs;
+m.markRaw;
+m.toRaw;
+m.effectScope;
+m.EffectScope;
+m.watchEffect;
+m.watchPostEffect;
+m.watchSyncEffect;
+m.Teleport;
+m.Suspense;
+m.KeepAlive;
+m.Transition;
+m.TransitionGroup;
+const A = m.Fragment;
+m.Static;
+m.Text;
+m.Comment;
 const te = {
   bot: [
     { tag: "path", attrs: { d: "M12 8V4H8" } },
@@ -189,7 +189,7 @@ const te = {
     { tag: "polyline", attrs: { points: "16 18 22 12 16 6" } },
     { tag: "polyline", attrs: { points: "8 6 2 12 8 18" } }
   ]
-}, Be = ["width", "height"], je = /* @__PURE__ */ Gt({
+}, He = ["width", "height"], Be = /* @__PURE__ */ Gt({
   __name: "Icon",
   props: {
     name: {},
@@ -211,31 +211,31 @@ const te = {
       class: R(["omp-svg-icon", n.value]),
       "aria-hidden": "true"
     }, [
-      (g(!0), v(A, null, F(o.value, (c, y) => (g(), Oe(Fe(c.tag), De({ key: y }, { ref_for: !0 }, c.attrs), null, 16))), 128))
-    ], 10, Be));
+      (g(!0), v(A, null, F(o.value, (c, y) => (g(), ze(De(c.tag), Ne({ key: y }, { ref_for: !0 }, c.attrs), null, 16))), 128))
+    ], 10, He));
   }
 }), Jt = (t, e) => {
   const s = t.__vccOpts || t;
   for (const [n, o] of e)
     s[n] = o;
   return s;
-}, S = /* @__PURE__ */ Jt(je, [["__scopeId", "data-v-35ecedfe"]]), V = {
+}, S = /* @__PURE__ */ Jt(Be, [["__scopeId", "data-v-35ecedfe"]]), V = {
   cwd: "",
   sessionFile: "",
   isRunning: !1,
   state: "inactive",
   summary: null
 };
-function Ve(t) {
+function je(t) {
   return !(!t || typeof t != "object" || !("model" in t) || typeof t.model != "string" || !("provider" in t) || typeof t.provider != "string" || !("thinkingLevel" in t) || typeof t.thinkingLevel != "string" || !("status" in t) || !["idle", "thinking", "running_tool", "error"].includes(String(t.status)) || !("totalTokens" in t) || typeof t.totalTokens != "number" || !Number.isSafeInteger(t.totalTokens) || t.totalTokens < 0 || !("turns" in t) || typeof t.turns != "number" || !Number.isSafeInteger(t.turns) || t.turns < 0 || !("totalCost" in t) || typeof t.totalCost != "number" || !Number.isFinite(t.totalCost) || t.totalCost < 0);
 }
-async function fe(t, e) {
+async function Ve(t, e) {
   const s = e?.paneId ?? t.terminal.activePaneId() ?? "", n = e?.cwd ?? t.terminal.activeCwd() ?? "";
   try {
     const o = await t.exec.run(["pane", s, n]);
     if (o.code !== 0 || !o.stdout.trim()) return V;
     const i = JSON.parse(o.stdout.trim());
-    return !i || typeof i != "object" || !("cwd" in i) || typeof i.cwd != "string" || !("sessionFile" in i) || typeof i.sessionFile != "string" || !("isRunning" in i) || typeof i.isRunning != "boolean" || !("state" in i) || i.state !== "inactive" && i.state !== "starting" && i.state !== "running" || i.state === "inactive" != !i.isRunning || !("summary" in i) || i.summary !== null && !Ve(i.summary) ? V : {
+    return !i || typeof i != "object" || !("cwd" in i) || typeof i.cwd != "string" || !("sessionFile" in i) || typeof i.sessionFile != "string" || !("isRunning" in i) || typeof i.isRunning != "boolean" || !("state" in i) || i.state !== "inactive" && i.state !== "starting" && i.state !== "running" || i.state === "inactive" != !i.isRunning || !("summary" in i) || i.summary !== null && !je(i.summary) ? V : {
       cwd: i.cwd,
       sessionFile: i.sessionFile,
       isRunning: i.isRunning,
@@ -281,18 +281,18 @@ async function Ge(t, e, s) {
       for (const u of y.entries) {
         if (u.is_dir || !u.name.endsWith(".jsonl") || u.name.startsWith("__") || !/^\d{4}-\d{2}-\d{2}T/.test(u.name)) continue;
         const h = [c, u.name].join(n);
-        let m = 0;
+        let d = 0;
         try {
-          m = (await t.workspace.stat(h)).modified || 0;
+          d = (await t.workspace.stat(h)).modified || 0;
         } catch {
         }
         r.push({
           path: h,
           name: u.name,
-          modified: m,
+          modified: d,
           displayName: Ue(h),
           workspace: Ye(h),
-          ageLabel: We(m, i)
+          ageLabel: We(d, i)
         });
       }
     } catch {
@@ -393,14 +393,14 @@ class Je {
           else if (h?.type === "thinking") r += `${h.thinking || h.text || ""}
 `;
           else if (h?.type === "toolCall") {
-            const m = h.arguments ?? {}, _ = {
+            const d = h.arguments ?? {}, w = {
               id: h.id || `call-${this.messages.length}-${c.length}`,
               name: h.name || "tool",
-              arguments: m,
-              argumentsLabel: Ze(m),
+              arguments: d,
+              argumentsLabel: Ze(d),
               intent: h.intent
             };
-            c.push(_), this.pending.set(_.id, _);
+            c.push(w), this.pending.set(w.id, w);
           }
         }
       this.messages.push({
@@ -568,15 +568,15 @@ async function rs(t, e, s, n, o) {
     const h = await ss(t, e, r, Xe);
     if (!h) return null;
     c ??= h, u === 0 && (y = h.start);
-    let m = h.content, _ = h.end;
+    let d = h.content, w = h.end;
     if (o !== void 0 && h.start >= o) break;
-    if (o !== void 0 && _ > o) {
-      const P = new TextEncoder().encode(m);
-      m = new TextDecoder().decode(P.subarray(0, Math.max(0, o - h.start))), _ = o;
+    if (o !== void 0 && w > o) {
+      const P = new TextEncoder().encode(d);
+      d = new TextDecoder().decode(P.subarray(0, Math.max(0, o - h.start))), w = o;
     }
-    const C = new TextEncoder().encode(m).byteLength;
-    if (!C && _ <= r) return null;
-    if (i.push(m, h.eof || o !== void 0 && _ >= o), u += C, _ <= r || h.eof || o !== void 0 && _ >= o || u >= n) break;
+    const C = new TextEncoder().encode(d).byteLength;
+    if (!C && w <= r) return null;
+    if (i.push(d, h.eof || o !== void 0 && w >= o), u += C, w <= r || h.eof || o !== void 0 && w >= o || u >= n) break;
     r = h.end;
   }
   return { parser: i, metadata: c, startOffset: y, loadedBytes: u };
@@ -590,24 +590,24 @@ async function se(t, e, s = {}) {
   const o = Math.max(1, s.tailBytes ?? qe), i = Math.max(1, s.historyBytes ?? Qe), r = s.before ?? is(e, n.size, n.modified || 0, o), c = es(e, o, i, r?.startOffset || 0), y = U.get(c);
   if (y && y.mtime === (n.modified || 0) && y.size === n.size)
     return U.delete(c), U.set(c, y), y.data;
-  const u = r ? Math.min(r.startOffset, n.size) : void 0, h = u === void 0 ? Math.max(0, n.size - o) : Math.max(0, u - i), m = await rs(t, e, h, i, u);
-  if (!m) return null;
-  let _;
+  const u = r ? Math.min(r.startOffset, n.size) : void 0, h = u === void 0 ? Math.max(0, n.size - o) : Math.max(0, u - i), d = await rs(t, e, h, i, u);
+  if (!d) return null;
+  let w;
   if (r) {
-    const C = as([...ee(m.parser.messages), ...ee(r.messages)]);
-    _ = {
+    const C = as([...ee(d.parser.messages), ...ee(r.messages)]);
+    w = {
       ...r,
       messages: C,
-      droppedHead: m.startOffset > 0 || m.parser.droppedHead || r.droppedHead,
-      startOffset: m.startOffset,
-      loadedBytes: m.loadedBytes + r.loadedBytes,
+      droppedHead: d.startOffset > 0 || d.parser.droppedHead || r.droppedHead,
+      startOffset: d.startOffset,
+      loadedBytes: d.loadedBytes + r.loadedBytes,
       fileSize: n.size,
       metricsExact: !1
-    }, !_.sessionId && m.parser.sessionId && (_.sessionId = m.parser.sessionId), !_.cwd && m.parser.cwd && (_.cwd = m.parser.cwd);
+    }, !w.sessionId && d.parser.sessionId && (w.sessionId = d.parser.sessionId), !w.cwd && d.parser.cwd && (w.cwd = d.parser.cwd);
   } else
-    _ = os(m.parser, e, n.size, m.startOffset, m.loadedBytes), !_.sessionId && m.metadata?.sessionId && (_.sessionId = m.metadata.sessionId), !_.cwd && m.metadata?.cwd && (_.cwd = m.metadata.cwd);
-  for (ls(_, await ns(t, e)), U.set(c, { mtime: n.modified || 0, size: n.size, data: _ }); U.size > ts; ) U.delete(U.keys().next().value);
-  return _;
+    w = os(d.parser, e, n.size, d.startOffset, d.loadedBytes), !w.sessionId && d.metadata?.sessionId && (w.sessionId = d.metadata.sessionId), !w.cwd && d.metadata?.cwd && (w.cwd = d.metadata.cwd);
+  for (ls(w, await ns(t, e)), U.set(c, { mtime: n.modified || 0, size: n.size, data: w }); U.size > ts; ) U.delete(U.keys().next().value);
+  return w;
 }
 function cs() {
   U.clear();
@@ -620,7 +620,7 @@ const Zt = {
   summary: null
 }, us = 250, ds = 3e4, ps = 2500, ms = 3e3, hs = 3e3, Kt = 600, x = /* @__PURE__ */ new Set();
 let L = null, N = Zt, ot = "", yt = null, _t = null, At = null, at = null, jt = null, Vt = "", $t = 0, J = 0, Y = null, Pt = -1, It = "", rt = !1, Z = !1, it = null, tt = -1 / 0, Lt = "";
-function ge(t) {
+function fe(t) {
   const e = t.summary;
   return [
     t.cwd,
@@ -642,7 +642,7 @@ function Ot() {
     if (!t.subscriber.visible || t.subscriber.visible()) return !0;
   return !1;
 }
-function ve() {
+function ge() {
   for (const t of x)
     if (!t.disposed)
       try {
@@ -656,16 +656,16 @@ function Rt() {
 function fs() {
   it !== null && (clearTimeout(it), it = null);
 }
-function ye() {
+function ve() {
   _t !== null && (clearTimeout(_t), _t = null);
 }
-function _e() {
-  ye(), !(!L || x.size === 0) && (_t = setTimeout(() => {
+function ye() {
+  ve(), !(!L || x.size === 0) && (_t = setTimeout(() => {
     if (_t = null, L && x.size > 0 && Ot()) {
       const t = L.terminal.activePaneId() || "";
       t !== ot && bt(t);
     }
-    _e();
+    ye();
   }, us));
 }
 function qt() {
@@ -710,7 +710,7 @@ function bt(t) {
     cwd: e.terminal.activeCwd() || "",
     isRunning: !0,
     state: "starting"
-  }, Lt = ge(N), tt = -1 / 0, qt(), rt = !0, Z = !0, ve();
+  }, Lt = fe(N), tt = -1 / 0, qt(), rt = !0, Z = !0, ge();
   const s = J;
   if ((e.terminal.activePaneId() || "") === t) {
     K(!0);
@@ -738,7 +738,7 @@ function K(t = !1) {
   Rt();
   const n = { paneId: s, cwd: e.terminal.activeCwd() || "" }, o = J;
   rt = !1, Z = !1;
-  const i = fe(e, n).then((r) => {
+  const i = Ve(e, n).then((r) => {
     if (L !== e || x.size === 0 || o !== J) return;
     const c = e.terminal.activePaneId() || "";
     if (c !== n.paneId) {
@@ -746,8 +746,8 @@ function K(t = !1) {
       return;
     }
     tt = Date.now();
-    const y = ge(r);
-    N = r, gs(), y !== Lt && (Lt = y, ve());
+    const y = fe(r);
+    N = r, gs(), y !== Lt && (Lt = y, ge());
   }).catch(() => {
     L === e && o === J && (tt = Date.now());
   }).finally(() => {
@@ -755,19 +755,19 @@ function K(t = !1) {
   });
   return Y = i, Pt = o, It = n.paneId, Promise.resolve();
 }
-function we() {
-  J += 1, Rt(), fs(), ye(), At?.dispose(), At = null, qt(), at && typeof document < "u" && document.removeEventListener("visibilitychange", at), at = null, L = null, Y = null, Pt = -1, It = "", rt = !1, Z = !1, N = Zt, ot = "", Lt = "", tt = -1 / 0;
+function _e() {
+  J += 1, Rt(), fs(), ve(), At?.dispose(), At = null, qt(), at && typeof document < "u" && document.removeEventListener("visibilitychange", at), at = null, L = null, Y = null, Pt = -1, It = "", rt = !1, Z = !1, N = Zt, ot = "", Lt = "", tt = -1 / 0;
 }
-function be(t, e) {
+function we(t, e) {
   L = t;
   const s = { subscriber: e, disposed: !1 };
   return x.add(s), !At && typeof t.terminal.onDidChangeActivePane == "function" && (At = t.terminal.onDidChangeActivePane((n) => {
     L !== t || x.size === 0 || bt(n || t.terminal.activePaneId() || "");
   })), typeof document < "u" && !at && (at = () => {
     document.hidden ? Rt() : K(!0);
-  }, document.addEventListener("visibilitychange", at)), _e(), e.listener?.(N), K(!0), {
+  }, document.addEventListener("visibilitychange", at)), ye(), e.listener?.(N), K(!0), {
     dispose() {
-      s.disposed || (s.disposed = !0, x.delete(s), x.size === 0 && we());
+      s.disposed || (s.disposed = !0, x.delete(s), x.size === 0 && _e());
     }
   };
 }
@@ -775,7 +775,7 @@ function Et() {
   return N;
 }
 function vs() {
-  x.clear(), we();
+  x.clear(), _e();
 }
 let ft = null, nt = null;
 function ys(t) {
@@ -850,13 +850,13 @@ async function Yt(t, e = !1) {
       try {
         const h = await t.workspace.readFile(u);
         if (!h.content) continue;
-        const { name: m, description: _, body: C } = Ss(h.content), P = m || y.name;
+        const { name: d, description: w, body: C } = Ss(h.content), P = d || y.name;
         if (i.has(P)) continue;
         i.set(P, {
           id: P,
           name: P,
-          description: _ || "No description provided.",
-          category: ks(P, _),
+          description: w || "No description provided.",
+          category: ks(P, w),
           source: r.label,
           filePath: u,
           body: C
@@ -876,7 +876,7 @@ function Ts(t, e, s = "all") {
     return o.every((c) => r.includes(c));
   });
 }
-function ke(t, e) {
+function be(t, e) {
   const s = t.terminal.activePaneId();
   return s ? (t.terminal.send(s, `/skill ${e}
 `), t.ui.notify(`Injected skill ${e}`, "info"), !0) : (t.ui.notify("No active terminal pane to inject into", "warn"), !1);
@@ -889,7 +889,7 @@ function ae(t, e) {
   const n = t.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean), r = `omp-${(n[n.length - 1] || "workspace").replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 32) || "workspace"}`;
   return e ? `${r}-${e}` : r;
 }
-function Se(t) {
+function ke(t) {
   return [];
 }
 function Is(t) {
@@ -926,17 +926,12 @@ function Wt(t, e, s, n, o) {
       t.ui.notify(`OMP preset ${n.id} was not applied before startup timeout`, "warn");
       return;
     }
-    c += 1;
-    const [u, h] = await Promise.all([
-      fe(t, { paneId: e, cwd: s }),
-      Qt(t)
-    ]);
-    if (h.some(
-      (_) => !i.has(_.pid) && ie(_.projectDir) === r
+    if (c += 1, (await Qt(t)).some(
+      (d) => !i.has(d.pid) && ie(d.projectDir) === r
     )) {
-      const _ = Is(n);
-      _ && window.setTimeout(() => {
-        t.terminal.send(e, _), t.ui.notify(`OMP preset ${n.id} applied`, "info");
+      const d = Is(n);
+      d && window.setTimeout(() => {
+        t.terminal.send(e, d), t.ui.notify(`OMP preset ${n.id} applied`, "info");
       }, Ps);
       return;
     }
@@ -945,7 +940,7 @@ function Wt(t, e, s, n, o) {
   window.setTimeout(() => void y(), oe);
 }
 async function wt(t, e = {}) {
-  const s = await St(t), n = e.cwd || t.terminal.activeCwd() || s?.home || ".", o = e.target || "new-tab", i = Se(e.preset), r = e.preset?.id || lt, c = !!s?.tmux && s?.platform !== "win32", y = await Qt(t), u = ["omp", ...i].map(vt).join(" "), h = `${u}; exec "$SHELL"`;
+  const s = await St(t), n = e.cwd || t.terminal.activeCwd() || s?.home || ".", o = e.target || "new-tab", i = ke(e.preset), r = e.preset?.id || lt, c = !!s?.tmux && s?.platform !== "win32", y = await Qt(t), u = ["omp", ...i].map(vt).join(" "), h = `${u}; exec "$SHELL"`;
   if (o === "new-tab") {
     const W = Math.random().toString(36).slice(2, 10), D = ae(n, W), H = c ? ["tmux", "new-session", "-s", D, "-c", n, "sh", "-c", h] : ["omp", ...i], z = await t.terminal.createTerminalTab({
       cwd: n,
@@ -957,25 +952,25 @@ async function wt(t, e = {}) {
       "info"
     ), z;
   }
-  const m = await t.terminal.splitTerminalPane({
+  const d = await t.terminal.splitTerminalPane({
     direction: o === "split-h" ? "horizontal" : "vertical",
     cwd: n
   });
-  if (!m)
+  if (!d)
     return t.ui.notify("Split failed: no active terminal tab", "warn"), null;
-  const _ = m.replace(/[^a-zA-Z0-9_-]+/g, "").slice(0, 8) || Math.random().toString(36).slice(2, 10), C = ae(n, _), P = c ? `tmux new-session -s ${vt(C)} -c ${vt(n)} sh -c ${vt(h)}` : u;
-  return t.terminal.send(m, `${P}
-`), Wt(t, m, n, e.preset, y), t.ui.notify(`OMP started in a split pane with preset ${r}`, "info"), m;
+  const w = d.replace(/[^a-zA-Z0-9_-]+/g, "").slice(0, 8) || Math.random().toString(36).slice(2, 10), C = ae(n, w), P = c ? `tmux new-session -s ${vt(C)} -c ${vt(n)} sh -c ${vt(h)}` : u;
+  return t.terminal.send(d, `${P}
+`), Wt(t, d, n, e.preset, y), t.ui.notify(`OMP started in a split pane with preset ${r}`, "info"), d;
 }
 async function Es(t, e) {
   const s = t.terminal.activePaneId();
   if (!s)
     return t.ui.notify("No active terminal pane to launch into", "warn"), !1;
-  const n = t.terminal.activeCwd() || "", o = await Qt(t), i = ["omp", ...Se()].map(vt).join(" ");
+  const n = t.terminal.activeCwd() || "", o = await Qt(t), i = ["omp", ...ke()].map(vt).join(" ");
   return t.terminal.send(s, `${i}
 `), Wt(t, s, n, e, o), t.ui.notify(`Launching OMP with preset ${e?.id || lt}`, "info"), !0;
 }
-async function Me(t) {
+async function Se(t) {
   const e = await St(t);
   if (e && !e.tmux) {
     t.ui.notify("Copy-mode needs tmux, which was not found on this host", "warn");
@@ -1095,7 +1090,7 @@ const As = { class: "omp-app" }, Ls = { class: "omp-app__bar" }, zs = { class: "
     api: {}
   },
   setup(t) {
-    const e = t, s = "1.1.2", n = ["all", "verification", "diagnostics", "delivery", "authoring", "general"], o = T("sessions"), i = T(""), r = T([]), c = T(!0), y = T(""), u = T(!0), h = T(""), m = T(null), _ = T(!1), C = T(!1), P = T(Ct), W = T(""), D = T(null);
+    const e = t, s = "1.1.2", n = ["all", "verification", "diagnostics", "delivery", "authoring", "general"], o = T("sessions"), i = T(""), r = T([]), c = T(!0), y = T(""), u = T(!0), h = T(""), d = T(null), w = T(!1), C = T(!1), P = T(Ct), W = T(""), D = T(null);
     let H = 0;
     const z = T([]), G = T(!0), ct = T(""), ut = T("all"), O = T(null), q = T([]), et = T(lt), Nt = E(() => [
       { id: "sessions", label: "Sessions", icon: "message-square", badge: r.value.length },
@@ -1103,15 +1098,15 @@ const As = { class: "omp-app" }, Ls = { class: "omp-app__bar" }, zs = { class: "
       { id: "profiles", label: "Model presets", icon: "zap", badge: q.value.length }
     ]), Mt = E(() => {
       const b = y.value.trim().toLowerCase();
-      return b ? r.value.filter((d) => d.path.toLowerCase().includes(b)) : r.value;
+      return b ? r.value.filter((p) => p.path.toLowerCase().includes(b)) : r.value;
     }), dt = E(() => {
-      if (!m.value) return [];
+      if (!d.value) return [];
       const b = W.value.trim().toLowerCase();
-      return b ? m.value.messages.filter((d) => Ke(d).includes(b)) : m.value.messages;
+      return b ? d.value.messages.filter((p) => Ke(p).includes(b)) : d.value.messages;
     }), Tt = E(() => {
       const b = dt.value;
       return b.length > P.value ? b.slice(b.length - P.value) : b;
-    }), pt = E(() => Math.max(0, dt.value.length - Tt.value.length)), M = E(() => Ts(z.value, ct.value, ut.value)), w = E(
+    }), pt = E(() => Math.max(0, dt.value.length - Tt.value.length)), M = E(() => Ts(z.value, ct.value, ut.value)), _ = E(
       () => q.value.find((b) => b.id === et.value) || null
     );
     function B(b) {
@@ -1124,36 +1119,36 @@ const As = { class: "omp-app" }, Ls = { class: "omp-app__bar" }, zs = { class: "
       c.value = !0;
       try {
         if (!i.value) {
-          const d = await St(e.api);
-          i.value = d?.ompHome ? xt(d.ompHome, "sessions") : "~/.omp/agent/sessions";
+          const p = await St(e.api);
+          i.value = p?.ompHome ? xt(p.ompHome, "sessions") : "~/.omp/agent/sessions";
         }
         let b;
         if (u.value) {
-          const d = Et().sessionFile;
-          if (!d) {
-            r.value = [], h.value = "", m.value = null;
+          const p = Et().sessionFile;
+          if (!p) {
+            r.value = [], h.value = "", d.value = null;
             return;
           }
-          const l = d.replace(/\\/g, "/").split("/");
+          const l = p.replace(/\\/g, "/").split("/");
           b = l[l.length - 2];
         }
-        r.value = await Ge(e.api, i.value, b), r.value.length && !r.value.some((d) => d.path === h.value) && await Xt(r.value[0].path);
+        r.value = await Ge(e.api, i.value, b), r.value.length && !r.value.some((p) => p.path === h.value) && await Xt(r.value[0].path);
       } finally {
         c.value = !1;
       }
     }
     async function Xt(b) {
-      const d = ++H;
-      h.value = b, P.value = Ct, _.value = !0;
+      const p = ++H;
+      h.value = b, P.value = Ct, w.value = !0;
       try {
         const l = await se(e.api, b);
-        d === H && h.value === b && (m.value = l);
+        p === H && h.value === b && (d.value = l);
       } finally {
-        d === H && (_.value = !1);
+        p === H && (w.value = !1);
       }
     }
-    async function Ce() {
-      const b = m.value, d = H;
+    async function Te() {
+      const b = d.value, p = H;
       if (!(!b || b.startOffset <= 0 || C.value)) {
         C.value = !0;
         try {
@@ -1161,13 +1156,13 @@ const As = { class: "omp-app" }, Ls = { class: "omp-app__bar" }, zs = { class: "
             historyBytes: eo,
             before: b
           });
-          d === H && m.value === b && h.value === b.filePath && (m.value = l);
+          p === H && d.value === b && h.value === b.filePath && (d.value = l);
         } finally {
-          d === H && (C.value = !1);
+          p === H && (C.value = !1);
         }
       }
     }
-    async function $e() {
+    async function Ce() {
       G.value = !0;
       try {
         z.value = await Yt(e.api), !O.value && z.value.length && (O.value = z.value[0]);
@@ -1175,7 +1170,7 @@ const As = { class: "omp-app" }, Ls = { class: "omp-app__bar" }, zs = { class: "
         G.value = !1;
       }
     }
-    async function Pe() {
+    async function $e() {
       G.value = !0;
       try {
         z.value = await Yt(e.api, !0), !O.value && z.value.length && (O.value = z.value[0]);
@@ -1183,27 +1178,27 @@ const As = { class: "omp-app" }, Ls = { class: "omp-app__bar" }, zs = { class: "
         G.value = !1;
       }
     }
-    function Ie(b) {
-      ke(e.api, b);
+    function Pe(b) {
+      be(e.api, b);
     }
-    async function Ft(b, d) {
-      await wt(e.api, { preset: b, target: d });
+    async function Ft(b, p) {
+      await wt(e.api, { preset: b, target: p });
+    }
+    async function Ie() {
+      await wt(e.api, { preset: _.value, target: "new-tab" });
     }
     async function Ee() {
-      await wt(e.api, { preset: w.value, target: "new-tab" });
-    }
-    async function xe() {
-      m.value && await wt(e.api, {
-        preset: w.value,
+      d.value && await wt(e.api, {
+        preset: _.value,
         target: "new-tab",
-        cwd: m.value.cwd || void 0
+        cwd: d.value.cwd || void 0
       });
     }
-    async function Ae() {
-      if (!m.value) return;
-      const b = m.value.messages.map((d) => `### ${Q(d.role)}
+    async function xe() {
+      if (!d.value) return;
+      const b = d.value.messages.map((p) => `### ${Q(p.role)}
 
-${d.text}
+${p.text}
 `).join(`
 ---
 
@@ -1220,9 +1215,9 @@ ${d.text}
           q.value = b;
         }),
         Dt(),
-        $e()
+        Ce()
       ]);
-    }), (b, d) => (g(), v("div", As, [
+    }), (b, p) => (g(), v("div", As, [
       a("header", Ls, [
         a("div", zs, [
           k(S, {
@@ -1230,8 +1225,8 @@ ${d.text}
             size: 18,
             class: "omp-app__brand-icon"
           }),
-          d[10] || (d[10] = a("span", { class: "omp-app__brand-name" }, "OMP Pilot", -1)),
-          a("span", Os, "v" + f(He(s)), 1)
+          p[10] || (p[10] = a("span", { class: "omp-app__brand-name" }, "OMP Pilot", -1)),
+          a("span", Os, "v" + f(Fe(s)), 1)
         ]),
         a("nav", Rs, [
           (g(!0), v(A, null, F(Nt.value, (l) => (g(), v("button", {
@@ -1252,7 +1247,7 @@ ${d.text}
         ]),
         a("div", Fs, [
           X(a("select", {
-            "onUpdate:modelValue": d[0] || (d[0] = (l) => et.value = l),
+            "onUpdate:modelValue": p[0] || (p[0] = (l) => et.value = l),
             class: "omp-field omp-field--compact",
             "aria-label": "Launch model preset"
           }, [
@@ -1266,13 +1261,13 @@ ${d.text}
           a("button", {
             type: "button",
             class: "omp-btn omp-btn--primary",
-            onClick: Ee
+            onClick: Ie
           }, [
             k(S, {
               name: "play",
               size: 13
             }),
-            d[11] || (d[11] = a("span", null, "New OMP tab", -1))
+            p[11] || (p[11] = a("span", null, "New OMP tab", -1))
           ])
         ])
       ]),
@@ -1286,7 +1281,7 @@ ${d.text}
                   size: 13
                 }),
                 X(a("input", {
-                  "onUpdate:modelValue": d[1] || (d[1] = (l) => y.value = l),
+                  "onUpdate:modelValue": p[1] || (p[1] = (l) => y.value = l),
                   type: "search",
                   placeholder: "Filter sessions",
                   "aria-label": "Filter sessions"
@@ -1308,13 +1303,13 @@ ${d.text}
             ]),
             a("label", Ws, [
               X(a("input", {
-                "onUpdate:modelValue": d[2] || (d[2] = (l) => u.value = l),
+                "onUpdate:modelValue": p[2] || (p[2] = (l) => u.value = l),
                 type: "checkbox",
                 onChange: Dt
               }, null, 544), [
-                [Re, u.value]
+                [Oe, u.value]
               ]),
-              d[12] || (d[12] = a("span", null, "This workspace only", -1))
+              p[12] || (p[12] = a("span", null, "This workspace only", -1))
             ]),
             a("div", Gs, [
               c.value ? (g(), v("p", Js, "Loading sessions...")) : Mt.value.length ? I("", !0) : (g(), v("p", Zs, " No transcripts found. Start OMP in a terminal tab and it will show up here. ")),
@@ -1341,7 +1336,7 @@ ${d.text}
             ])
           ]),
           a("div", Xs, [
-            m.value ? (g(), v(A, { key: 0 }, [
+            d.value ? (g(), v(A, { key: 0 }, [
               a("header", tn, [
                 a("div", en, [
                   a("span", sn, [
@@ -1349,28 +1344,28 @@ ${d.text}
                       name: "cpu",
                       size: 12
                     }),
-                    j(f(m.value.model), 1)
+                    j(f(d.value.model), 1)
                   ]),
                   a("span", nn, [
                     k(S, {
                       name: "layers",
                       size: 12
                     }),
-                    j(f(m.value.totalTokens.toLocaleString()) + " tok", 1)
+                    j(f(d.value.totalTokens.toLocaleString()) + " tok", 1)
                   ]),
                   a("span", on, [
                     k(S, {
                       name: "activity",
                       size: 12
                     }),
-                    j(f(m.value.totalCost.toFixed(3)) + " USD" + f(m.value.metricsExact ? "" : " loaded"), 1)
+                    j(f(d.value.totalCost.toFixed(3)) + " USD" + f(d.value.metricsExact ? "" : " loaded"), 1)
                   ]),
                   a("span", an, [
                     k(S, {
                       name: "message-square",
                       size: 12
                     }),
-                    j(f(m.value.messages.length) + " entries", 1)
+                    j(f(d.value.messages.length) + " entries", 1)
                   ])
                 ]),
                 a("div", rn, [
@@ -1380,7 +1375,7 @@ ${d.text}
                       size: 12
                     }),
                     X(a("input", {
-                      "onUpdate:modelValue": d[3] || (d[3] = (l) => W.value = l),
+                      "onUpdate:modelValue": p[3] || (p[3] = (l) => W.value = l),
                       type: "search",
                       placeholder: "Filter turns",
                       "aria-label": "Filter turns"
@@ -1392,35 +1387,35 @@ ${d.text}
                     type: "button",
                     class: "omp-btn",
                     title: "Copy the transcript as Markdown",
-                    onClick: Ae
+                    onClick: xe
                   }, [
                     k(S, {
                       name: "copy",
                       size: 12
                     }),
-                    d[13] || (d[13] = a("span", null, "Copy", -1))
+                    p[13] || (p[13] = a("span", null, "Copy", -1))
                   ]),
                   a("button", {
                     type: "button",
                     class: "omp-btn",
                     title: "Open this workspace in a new OMP tab",
-                    onClick: xe
+                    onClick: Ee
                   }, [
                     k(S, {
                       name: "external-link",
                       size: 12
                     }),
-                    d[14] || (d[14] = a("span", null, "Open", -1))
+                    p[14] || (p[14] = a("span", null, "Open", -1))
                   ])
                 ])
               ]),
-              m.value.droppedHead ? (g(), v("div", cn, [
-                a("span", null, " Showing the last " + f((m.value.loadedBytes / 1048576).toFixed(1)) + " MB of " + f((m.value.fileSize / 1048576).toFixed(1)) + " MB (" + f(m.value.turns) + " turns" + f(m.value.metricsExact ? "" : " in loaded window") + "). ", 1),
+              d.value.droppedHead ? (g(), v("div", cn, [
+                a("span", null, " Showing the last " + f((d.value.loadedBytes / 1048576).toFixed(1)) + " MB of " + f((d.value.fileSize / 1048576).toFixed(1)) + " MB (" + f(d.value.turns) + " turns" + f(d.value.metricsExact ? "" : " in loaded window") + "). ", 1),
                 a("button", {
                   type: "button",
                   class: "omp-btn",
                   disabled: C.value,
-                  onClick: Ce
+                  onClick: Te
                 }, [
                   k(S, {
                     name: "history",
@@ -1430,12 +1425,12 @@ ${d.text}
                 ], 8, un)
               ])) : I("", !0),
               a("div", dn, [
-                _.value ? (g(), v("p", pn, "Reading transcript...")) : dt.value.length ? I("", !0) : (g(), v("p", mn, "No turn matches that filter.")),
+                w.value ? (g(), v("p", pn, "Reading transcript...")) : dt.value.length ? I("", !0) : (g(), v("p", mn, "No turn matches that filter.")),
                 pt.value ? (g(), v("button", {
                   key: 2,
                   type: "button",
                   class: "omp-btn omp-btn--wide",
-                  onClick: d[4] || (d[4] = (l) => P.value += Ct)
+                  onClick: p[4] || (p[4] = (l) => P.value += Ct)
                 }, [
                   k(S, {
                     name: "chevron-up",
@@ -1458,13 +1453,13 @@ ${d.text}
                     a("span", gn, f(l.timeLabel), 1)
                   ]),
                   l.thinking ? (g(), v("details", vn, [
-                    d[15] || (d[15] = a("summary", null, "Reasoning", -1)),
+                    p[15] || (p[15] = a("summary", null, "Reasoning", -1)),
                     a("pre", yn, f(l.thinking), 1)
                   ])) : I("", !0),
                   l.text ? (g(), v("pre", _n, f(l.text), 1)) : I("", !0),
                   l.images.length ? (g(), v("div", wn, [
-                    (g(!0), v(A, null, F(l.images, ($, Le) => (g(), v("button", {
-                      key: Le,
+                    (g(!0), v(A, null, F(l.images, ($, Ae) => (g(), v("button", {
+                      key: Ae,
                       type: "button",
                       class: "omp-thumb",
                       onClick: (Go) => D.value = $
@@ -1485,10 +1480,10 @@ ${d.text}
                       $.intent ? (g(), v("span", Mn, f($.intent), 1)) : I("", !0),
                       a("span", Tn, f($.isError ? "failed" : "ok"), 1)
                     ]),
-                    d[17] || (d[17] = a("p", { class: "omp-fold__label" }, "Arguments", -1)),
+                    p[17] || (p[17] = a("p", { class: "omp-fold__label" }, "Arguments", -1)),
                     a("pre", Cn, f($.argumentsLabel), 1),
                     $.result ? (g(), v(A, { key: 0 }, [
-                      d[16] || (d[16] = a("p", { class: "omp-fold__label" }, "Result", -1)),
+                      p[16] || (p[16] = a("p", { class: "omp-fold__label" }, "Result", -1)),
                       a("pre", $n, f($.result), 1)
                     ], 64)) : I("", !0)
                   ], 2))), 128))
@@ -1499,7 +1494,7 @@ ${d.text}
                 name: "history",
                 size: 28
               }),
-              d[18] || (d[18] = a("p", null, "Select a session on the left to read its transcript.", -1))
+              p[18] || (p[18] = a("p", null, "Select a session on the left to read its transcript.", -1))
             ]))
           ])
         ])) : I("", !0),
@@ -1511,7 +1506,7 @@ ${d.text}
                 size: 14
               }),
               X(a("input", {
-                "onUpdate:modelValue": d[5] || (d[5] = (l) => ct.value = l),
+                "onUpdate:modelValue": p[5] || (p[5] = (l) => ct.value = l),
                 type: "search",
                 placeholder: "Search skills by name or intent",
                 "aria-label": "Search skills"
@@ -1523,7 +1518,7 @@ ${d.text}
               type: "button",
               class: "omp-icon-btn",
               title: "Reload skills",
-              onClick: Pe
+              onClick: $e
             }, [
               k(S, {
                 name: "refresh",
@@ -1568,13 +1563,13 @@ ${d.text}
                 a("button", {
                   type: "button",
                   class: "omp-btn omp-btn--primary",
-                  onClick: d[6] || (d[6] = (l) => Ie(O.value.name))
+                  onClick: p[6] || (p[6] = (l) => Pe(O.value.name))
                 }, [
                   k(S, {
                     name: "terminal",
                     size: 12
                   }),
-                  d[19] || (d[19] = a("span", null, "Inject", -1))
+                  p[19] || (p[19] = a("span", null, "Inject", -1))
                 ])
               ]),
               a("p", Yn, f(O.value.description), 1),
@@ -1583,7 +1578,7 @@ ${d.text}
           ])
         ])) : I("", !0),
         o.value === "profiles" ? (g(), v("section", Gn, [
-          d[23] || (d[23] = a("header", { class: "omp-profiles__head" }, [
+          p[23] || (p[23] = a("header", { class: "omp-profiles__head" }, [
             a("h2", null, "Model presets"),
             a("p", null, [
               j("Loaded from OMP global "),
@@ -1618,7 +1613,7 @@ ${d.text}
                     name: "play",
                     size: 12
                   }),
-                  d[20] || (d[20] = a("span", null, "New tab", -1))
+                  p[20] || (p[20] = a("span", null, "New tab", -1))
                 ], 8, qn),
                 a("button", {
                   type: "button",
@@ -1629,7 +1624,7 @@ ${d.text}
                     name: "split-vertical",
                     size: 12
                   }),
-                  d[21] || (d[21] = a("span", null, "Split right", -1))
+                  p[21] || (p[21] = a("span", null, "Split right", -1))
                 ], 8, Qn),
                 a("button", {
                   type: "button",
@@ -1640,7 +1635,7 @@ ${d.text}
                     name: "split-horizontal",
                     size: 12
                   }),
-                  d[22] || (d[22] = a("span", null, "Split down", -1))
+                  p[22] || (p[22] = a("span", null, "Split down", -1))
                 ], 8, Xn)
               ])
             ], 2))), 128))
@@ -1652,13 +1647,13 @@ ${d.text}
         class: "omp-lightbox",
         role: "dialog",
         "aria-modal": "true",
-        onClick: d[9] || (d[9] = (l) => D.value = null)
+        onClick: p[9] || (p[9] = (l) => D.value = null)
       }, [
         a("button", {
           type: "button",
           class: "omp-lightbox__close",
           "aria-label": "Close image",
-          onClick: d[7] || (d[7] = (l) => D.value = null)
+          onClick: p[7] || (p[7] = (l) => D.value = null)
         }, [
           k(S, {
             name: "x",
@@ -1668,7 +1663,7 @@ ${d.text}
         a("img", {
           src: D.value,
           alt: "Attachment preview",
-          onClick: d[8] || (d[8] = st(() => {
+          onClick: p[8] || (p[8] = st(() => {
           }, ["stop"]))
         }, null, 8, to)
       ])) : I("", !0)
@@ -1692,12 +1687,12 @@ ${d.text}
   },
   setup(t) {
     const e = t, s = T(!1), n = T(!1), o = T(!0), i = T(!0), r = T([]), c = T(lt), u = T({ cwd: "", sessionFile: "", isRunning: !1, state: "inactive", summary: null }), h = T(!1);
-    let m = 0, _, C = !1;
+    let d = 0, w, C = !1;
     const P = [], W = E(
       () => r.value.find((M) => M.id === c.value) || null
     ), D = E(() => {
-      const w = (u.value.summary?.model || "").split("/").pop() || "omp";
-      return w.length > 18 ? `${w.slice(0, 17)}...` : w;
+      const _ = (u.value.summary?.model || "").split("/").pop() || "omp";
+      return _.length > 18 ? `${_.slice(0, 17)}...` : _;
     }), H = E(() => {
       const M = u.value.summary?.totalTokens || 0;
       return M >= 1e6 ? `${(M / 1e6).toFixed(1)}M tok` : M >= 1e3 ? `${Math.round(M / 1e3)}k tok` : `${M} tok`;
@@ -1717,13 +1712,13 @@ ${d.text}
     }), G = E(() => u.value.state === "inactive" ? "is-inactive" : u.value.state === "starting" ? "is-starting" : `is-${u.value.summary?.status || "idle"}`), ct = E(() => {
       const M = u.value.cwd;
       if (!M) return "this pane";
-      const w = M.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean);
-      return w[w.length - 1] || M;
+      const _ = M.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean);
+      return _[_.length - 1] || M;
     }), ut = E(() => u.value.state === "inactive" ? "Inactive" : u.value.state === "starting" ? "Starting" : `${D.value} · ${u.value.summary?.totalCost.toFixed(2) || "0.00"} USD`);
     function O() {
       try {
-        const M = localStorage.getItem(ce), w = M ? JSON.parse(M) : [];
-        return Array.isArray(w) ? w : [];
+        const M = localStorage.getItem(ce), _ = M ? JSON.parse(M) : [];
+        return Array.isArray(_) ? _ : [];
       } catch {
         return [];
       }
@@ -1742,25 +1737,25 @@ ${d.text}
     }
     function Nt(M) {
       if (!C) {
-        if (h.value = !0, M.state === "inactive" && n.value && Date.now() < m) {
+        if (h.value = !0, M.state === "inactive" && n.value && Date.now() < d) {
           u.value = { ...M, state: "starting" };
           return;
         }
-        (M.state !== "inactive" || Date.now() >= m) && (n.value = !1), u.value = M;
+        (M.state !== "inactive" || Date.now() >= d) && (n.value = !1), u.value = M;
       }
     }
     function Mt() {
       e.api.open();
     }
     async function dt() {
-      await Me(e.api);
+      await Se(e.api);
     }
     async function Tt() {
       await wt(e.api, { preset: W.value, target: "split-v" });
     }
     async function pt() {
-      !await Es(e.api, W.value) || C || (et(), n.value = !0, u.value = { ...u.value, state: "starting", summary: null }, m = Date.now() + Lo, _ !== void 0 && window.clearTimeout(_), _ = window.setTimeout(() => {
-        _ = void 0, C || K(!0);
+      !await Es(e.api, W.value) || C || (et(), n.value = !0, u.value = { ...u.value, state: "starting", summary: null }, d = Date.now() + Lo, w !== void 0 && window.clearTimeout(w), w = window.setTimeout(() => {
+        w = void 0, C || K(!0);
       }, 600));
     }
     return me(async () => {
@@ -1771,25 +1766,25 @@ ${d.text}
       }
       const M = O();
       M.length && (r.value = M, o.value = !1), P.push(
-        be(e.api, {
+        we(e.api, {
           listener: Nt,
           visible: () => !s.value
         })
       );
-      const w = await St(e.api);
+      const _ = await St(e.api);
       if (C) return;
-      i.value = w ? w.tmux : !0;
+      i.value = _ ? _.tmux : !0;
       const B = await zt(e.api);
       C || (r.value = B, q(r.value), r.value.some((Q) => Q.id === c.value) || (c.value = lt), o.value = !1);
-    }), ze(() => {
-      C = !0, _ !== void 0 && (window.clearTimeout(_), _ = void 0);
+    }), Le(() => {
+      C = !0, w !== void 0 && (window.clearTimeout(w), w = void 0);
       for (const M of P)
         try {
           M.dispose();
         } catch {
         }
       P.length = 0;
-    }), (M, w) => (g(), v("section", {
+    }), (M, _) => (g(), v("section", {
       class: R(["omp-hud", [`is-${u.value.state}`, { "is-collapsed": s.value, "is-dragging": t.dragging }]]),
       role: "status",
       "aria-live": "polite"
@@ -1801,7 +1796,7 @@ ${d.text}
             size: 15,
             class: "omp-hud__logo"
           }),
-          w[6] || (w[6] = a("span", { class: "omp-hud__name" }, "OMP", -1)),
+          _[6] || (_[6] = a("span", { class: "omp-hud__name" }, "OMP", -1)),
           a("span", {
             class: R(["omp-hud__beacon", G.value]),
             title: z.value
@@ -1810,9 +1805,9 @@ ${d.text}
         ]),
         a("div", {
           class: "omp-hud__tools",
-          onPointerdown: w[3] || (w[3] = st(() => {
+          onPointerdown: _[3] || (_[3] = st(() => {
           }, ["stop"])),
-          onMousedown: w[4] || (w[4] = st(() => {
+          onMousedown: _[4] || (_[4] = st(() => {
           }, ["stop"]))
         }, [
           a("button", {
@@ -1820,11 +1815,11 @@ ${d.text}
             class: "omp-hud__icon",
             title: s.value ? "Expand panel" : "Collapse panel",
             "aria-expanded": !s.value,
-            onPointerdown: w[0] || (w[0] = st(() => {
+            onPointerdown: _[0] || (_[0] = st(() => {
             }, ["stop"])),
-            onMousedown: w[1] || (w[1] = st(() => {
+            onMousedown: _[1] || (_[1] = st(() => {
             }, ["stop"])),
-            onClick: w[2] || (w[2] = st((B) => s.value = !s.value, ["stop"]))
+            onClick: _[2] || (_[2] = st((B) => s.value = !s.value, ["stop"]))
           }, [
             k(S, {
               name: s.value ? "chevron-down" : "chevron-up",
@@ -1897,7 +1892,7 @@ ${d.text}
                 name: "history",
                 size: 14
               }),
-              w[7] || (w[7] = a("span", null, "Explorer", -1))
+              _[7] || (_[7] = a("span", null, "Explorer", -1))
             ]),
             a("button", {
               type: "button",
@@ -1910,7 +1905,7 @@ ${d.text}
                 name: "terminal",
                 size: 14
               }),
-              w[8] || (w[8] = a("span", null, "Scroll", -1))
+              _[8] || (_[8] = a("span", null, "Scroll", -1))
             ], 8, Mo),
             a("button", {
               type: "button",
@@ -1922,11 +1917,11 @@ ${d.text}
                 name: "split-vertical",
                 size: 14
               }),
-              w[9] || (w[9] = a("span", null, "Split", -1))
+              _[9] || (_[9] = a("span", null, "Split", -1))
             ])
           ])
         ], 64)) : u.value.state === "starting" || !h.value ? (g(), v("div", To, [
-          w[10] || (w[10] = a("span", {
+          _[10] || (_[10] = a("span", {
             class: "omp-hud__spinner",
             "aria-hidden": "true"
           }, null, -1)),
@@ -1939,17 +1934,17 @@ ${d.text}
               size: 18,
               class: "omp-hud__placeholder-icon"
             }),
-            w[11] || (w[11] = a("p", { class: "omp-hud__placeholder-title" }, "No OMP session here", -1)),
-            w[12] || (w[12] = a("p", { class: "omp-hud__placeholder-note" }, "Pick a model preset and start one in this pane.", -1))
+            _[11] || (_[11] = a("p", { class: "omp-hud__placeholder-title" }, "No OMP session here", -1)),
+            _[12] || (_[12] = a("p", { class: "omp-hud__placeholder-note" }, "Pick a model preset and start one in this pane.", -1))
           ]),
           a("div", Io, [
-            w[13] || (w[13] = a("label", {
+            _[13] || (_[13] = a("label", {
               class: "omp-hud__label",
               for: "omp-hud-preset"
             }, "Model preset", -1)),
             X(a("select", {
               id: "omp-hud-preset",
-              "onUpdate:modelValue": w[5] || (w[5] = (B) => c.value = B),
+              "onUpdate:modelValue": _[5] || (_[5] = (B) => c.value = B),
               class: "omp-hud__select",
               disabled: o.value,
               onChange: et
@@ -1977,13 +1972,13 @@ ${d.text}
           ])
         ], 64))
       ], 512), [
-        [Ne, !s.value]
+        [Re, !s.value]
       ])
     ], 2));
   }
 }), Oo = /* @__PURE__ */ Jt(zo, [["__scopeId", "data-v-30d2ca9a"]]);
 function Ro(t) {
-  const e = be(t, {});
+  const e = we(t, {});
   return {
     series: {
       id: "dinotty-omp:session",
@@ -2036,10 +2031,10 @@ function Ho() {
   const t = Fo();
   return t < Do ? { x: mt, y: mt } : { x: Math.max(mt, t - No - mt), y: mt };
 }
-const Te = "dinotty:overlay-pos:dinotty-omp:dinotty-omp:hud", ue = "dinotty-omp:overlay-pos-migrated:v1", Bo = 44, jo = 120, de = 244, pe = 12;
+const Me = "dinotty:overlay-pos:dinotty-omp:dinotty-omp:hud", ue = "dinotty-omp:overlay-pos-migrated:v1", Bo = 44, jo = 120, de = 244, pe = 12;
 function Vo() {
   try {
-    const t = localStorage.getItem(Te);
+    const t = localStorage.getItem(Me);
     if (!t) return null;
     const e = JSON.parse(t);
     return typeof e?.x != "number" || typeof e?.y != "number" || !Number.isFinite(e.x) || !Number.isFinite(e.y) ? null : { x: e.x, y: e.y };
@@ -2062,7 +2057,7 @@ function Yo(t) {
   const n = Vo();
   if (!(!n || !Uo(n, e, s)))
     try {
-      localStorage.setItem(Te, JSON.stringify(t)), localStorage.setItem(ue, "1");
+      localStorage.setItem(Me, JSON.stringify(t)), localStorage.setItem(ue, "1");
     } catch {
     }
 }
@@ -2077,7 +2072,7 @@ function Jo(t) {
     })
   ), ht(
     t.commands.register("omp.tmux-copymode", () => {
-      Me(t);
+      Se(t);
     })
   ), ht(
     t.commands.registerQuickPick("omp.quick-launch", {
@@ -2097,7 +2092,7 @@ function Jo(t) {
         detail: o.description,
         icon: "book",
         action: () => {
-          ke(t, o.name);
+          be(t, o.name);
         }
       }))
     })

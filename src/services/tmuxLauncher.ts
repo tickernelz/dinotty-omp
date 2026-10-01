@@ -1,6 +1,5 @@
 import type { PluginContext } from '../types/dinotty';
 import { getHostInfo } from './hostInfo';
-import { readPaneSession } from './sessionResolver';
 import { DEFAULT_PRESET_ID, type PresetItem } from './presetService';
 
 export type LaunchTarget = 'new-tab' | 'split-h' | 'split-v';
@@ -84,10 +83,7 @@ function schedulePresetSwitch(
       return;
     }
     attempts += 1;
-    const [pane, clients] = await Promise.all([
-      readPaneSession(ctx, { paneId, cwd }),
-      readLiveOmpClients(ctx)
-    ]);
+    const clients = await readLiveOmpClients(ctx);
     const freshClient = clients.some(
       (client) => !baseline.has(client.pid) && normalizeWorkspace(client.projectDir) === workspace
     );
