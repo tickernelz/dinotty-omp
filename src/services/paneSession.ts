@@ -41,6 +41,7 @@ let inFlightPaneId = '';
 let dirty = false;
 let forcePending = false;
 let trailingTimer: ReturnType<typeof setTimeout> | null = null;
+let retryUntil = 0;
 let lastRefreshAt = -Infinity;
 let lastSignature = '';
 
@@ -99,13 +100,18 @@ function disposeWatch(): void {
 function scheduleNext(): void {
   clearTimer();
   if (!ctxRef || subscriptions.size === 0 || inFlight) return;
+  const now = Date.now();
   const safety = current.state === 'starting'
     ? STARTING_SAFETY_MS
-    : current.sessionFile ? SETTLED_SAFETY_MS : 0;
+    : current.sessionFile
+      ? SETTLED_SAFETY_MS
+      : retryUntil > now
+        ? 1_000
+        : 0;
   if (!dirty && safety === 0) return;
   const delay = dirty
-    ? forcePending ? 0 : Math.max(0, lastRefreshAt + MIN_REFRESH_GAP_MS - Date.now())
-    : Math.max(0, lastRefreshAt + safety - Date.now());
+    ? forcePending ? 0 : Math.max(0, lastRefreshAt + MIN_REFRESH_GAP_MS - now)
+    : Math.max(0, lastRefreshAt + safety - now);
   if (!isVisible()) return;
   timer = setTimeout(() => {
     timer = null;
@@ -153,12 +159,14 @@ function ensureWatch(): void {
 }
 
 function switchPane(paneId: string): void {
-  if (!ctxRef || subscriptions.size === 0 || paneId === currentPaneId) return;
+  const ctx = ctxRef;
+  if (!ctx || subscriptions.size === 0 || paneId === currentPaneId) return;
   generation += 1;
   currentPaneId = paneId;
+  retryUntil = Date.now() + 6_000;
   current = {
     ...EMPTY_PANE_SESSION,
-    cwd: ctxRef.terminal.activeCwd() || '',
+    cwd: ctx.terminal.activeCwd() || '',
     isRunning: true,
     state: 'starting'
   };
@@ -168,9 +176,22 @@ function switchPane(paneId: string): void {
   dirty = true;
   forcePending = true;
   emit();
-  void refreshPaneSession(true);
+  const switchGeneration = generation;
+  const getterPaneId = ctx.terminal.activePaneId() || '';
+  if (getterPaneId === paneId) {
+    void refreshPaneSession(true);
+    return;
+  }
+  queueMicrotask(() => {
+    if (ctxRef !== ctx || subscriptions.size === 0 || switchGeneration !== generation) return;
+    const settledPaneId = ctx.terminal.activePaneId() || paneId;
+    if (settledPaneId !== currentPaneId) {
+      switchPane(settledPaneId);
+      return;
+    }
+    void refreshPaneSession(true);
+  });
 }
-
 export function refreshPaneSession(force = false): Promise<void> {
   const ctx = ctxRef;
   if (!ctx || subscriptions.size === 0) return Promise.resolve();
@@ -199,8 +220,12 @@ export function refreshPaneSession(force = false): Promise<void> {
       return;
     }
     lastRefreshAt = Date.now();
-    const signature = signatureOf(next);
-    current = next;
+    const display = next.state === 'inactive' && Date.now() < retryUntil
+      ? { ...next, cwd: next.cwd || request.cwd, isRunning: true, state: 'starting' as const, summary: null }
+      : next;
+    if (display.state !== 'inactive') retryUntil = 0;
+    const signature = signatureOf(display);
+    current = display;
     ensureWatch();
     if (signature !== lastSignature) {
       lastSignature = signature;
@@ -238,6 +263,7 @@ function stopRuntime(): void {
   inFlightPaneId = '';
   dirty = false;
   forcePending = false;
+  retryUntil = 0;
   current = EMPTY_PANE_SESSION;
   currentPaneId = '';
   lastSignature = '';

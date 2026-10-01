@@ -3,34 +3,34 @@ if (!p)
   throw new Error("host vue bridge missing: window.__DINOTTY_VUE__ not assigned");
 const C = p.ref;
 p.reactive;
-const P = p.computed;
+const I = p.computed;
 p.watch;
-const re = p.onMounted;
+const ce = p.onMounted;
 p.onUnmounted;
-const $e = p.onBeforeUnmount;
+const Te = p.onBeforeUnmount;
 p.nextTick;
 p.h;
-const jt = p.defineComponent;
+const Wt = p.defineComponent;
 p.getCurrentInstance;
 const g = p.toDisplayString, A = p.normalizeClass;
 p.normalizeStyle;
-const f = p.openBlock, v = p.createElementBlock, a = p.createElementVNode, Te = p.createBlock, k = p.createVNode, I = p.createCommentVNode, G = p.createTextVNode;
+const f = p.openBlock, v = p.createElementBlock, a = p.createElementVNode, xe = p.createBlock, k = p.createVNode, P = p.createCommentVNode, G = p.createTextVNode;
 p.withCtx;
-const Z = p.withDirectives, st = p.withModifiers;
+const X = p.withDirectives, nt = p.withModifiers;
 p.withKeys;
-const Dt = p.vModelText, ce = p.vModelSelect, xe = p.vModelCheckbox;
+const Ft = p.vModelText, ue = p.vModelSelect, Pe = p.vModelCheckbox;
 p.vModelRadio;
-const Ie = p.vShow, Pe = p.mergeProps, D = p.renderList;
+const Ie = p.vShow, Ee = p.mergeProps, D = p.renderList;
 p.renderSlot;
 p.resolveComponent;
 p.resolveDirective;
-const Ee = p.resolveDynamicComponent;
+const Le = p.resolveDynamicComponent;
 p.resolveTransitionHooks;
 p.setBlockTracking;
 p.useSlots;
 p.useAttrs;
 p.isRef;
-const Le = p.unref;
+const ze = p.unref;
 p.toRef;
 p.toRefs;
 p.customRef;
@@ -55,7 +55,7 @@ const E = p.Fragment;
 p.Static;
 p.Text;
 p.Comment;
-const Zt = {
+const Qt = {
   bot: [
     { tag: "path", attrs: { d: "M12 8V4H8" } },
     { tag: "rect", attrs: { width: "16", height: "12", x: "4", y: "8", rx: "2" } },
@@ -189,7 +189,7 @@ const Zt = {
     { tag: "polyline", attrs: { points: "16 18 22 12 16 6" } },
     { tag: "polyline", attrs: { points: "8 6 2 12 8 18" } }
   ]
-}, ze = ["width", "height"], Ae = /* @__PURE__ */ jt({
+}, Ae = ["width", "height"], Oe = /* @__PURE__ */ Wt({
   __name: "Icon",
   props: {
     name: {},
@@ -197,8 +197,8 @@ const Zt = {
     class: { default: "" }
   },
   setup(t) {
-    const e = t, s = P(() => e.size), n = P(() => e.class), o = P(() => Zt[e.name] || Zt.info);
-    return (i, l) => (f(), v("svg", {
+    const e = t, s = I(() => e.size), n = I(() => e.class), o = I(() => Qt[e.name] || Qt.info);
+    return (i, r) => (f(), v("svg", {
       xmlns: "http://www.w3.org/2000/svg",
       width: s.value,
       height: s.value,
@@ -211,31 +211,31 @@ const Zt = {
       class: A(["omp-svg-icon", n.value]),
       "aria-hidden": "true"
     }, [
-      (f(!0), v(E, null, D(o.value, (c, y) => (f(), Te(Ee(c.tag), Pe({ key: y }, { ref_for: !0 }, c.attrs), null, 16))), 128))
-    ], 10, ze));
+      (f(!0), v(E, null, D(o.value, (u, y) => (f(), xe(Le(u.tag), Ee({ key: y }, { ref_for: !0 }, u.attrs), null, 16))), 128))
+    ], 10, Ae));
   }
-}), Wt = (t, e) => {
+}), Yt = (t, e) => {
   const s = t.__vccOpts || t;
   for (const [n, o] of e)
     s[n] = o;
   return s;
-}, S = /* @__PURE__ */ Wt(Ae, [["__scopeId", "data-v-35ecedfe"]]), V = {
+}, M = /* @__PURE__ */ Yt(Oe, [["__scopeId", "data-v-35ecedfe"]]), V = {
   cwd: "",
   sessionFile: "",
   isRunning: !1,
   state: "inactive",
   summary: null
 };
-function Oe(t) {
+function Ne(t) {
   return !(!t || typeof t != "object" || !("model" in t) || typeof t.model != "string" || !("provider" in t) || typeof t.provider != "string" || !("thinkingLevel" in t) || typeof t.thinkingLevel != "string" || !("status" in t) || !["idle", "thinking", "running_tool", "error"].includes(String(t.status)) || !("totalTokens" in t) || typeof t.totalTokens != "number" || !Number.isSafeInteger(t.totalTokens) || t.totalTokens < 0 || !("turns" in t) || typeof t.turns != "number" || !Number.isSafeInteger(t.turns) || t.turns < 0 || !("totalCost" in t) || typeof t.totalCost != "number" || !Number.isFinite(t.totalCost) || t.totalCost < 0);
 }
-async function Ne(t, e) {
+async function De(t, e) {
   const s = e?.paneId ?? t.terminal.activePaneId() ?? "", n = e?.cwd ?? t.terminal.activeCwd() ?? "";
   try {
     const o = await t.exec.run(["pane", s, n]);
     if (o.code !== 0 || !o.stdout.trim()) return V;
     const i = JSON.parse(o.stdout.trim());
-    return !i || typeof i != "object" || !("cwd" in i) || typeof i.cwd != "string" || !("sessionFile" in i) || typeof i.sessionFile != "string" || !("isRunning" in i) || typeof i.isRunning != "boolean" || !("state" in i) || i.state !== "inactive" && i.state !== "starting" && i.state !== "running" || i.state === "inactive" != !i.isRunning || !("summary" in i) || i.summary !== null && !Oe(i.summary) ? V : {
+    return !i || typeof i != "object" || !("cwd" in i) || typeof i.cwd != "string" || !("sessionFile" in i) || typeof i.sessionFile != "string" || !("isRunning" in i) || typeof i.isRunning != "boolean" || !("state" in i) || i.state !== "inactive" && i.state !== "starting" && i.state !== "running" || i.state === "inactive" != !i.isRunning || !("summary" in i) || i.summary !== null && !Ne(i.summary) ? V : {
       cwd: i.cwd,
       sessionFile: i.sessionFile,
       isRunning: i.isRunning,
@@ -246,15 +246,15 @@ async function Ne(t, e) {
     return V;
   }
 }
-function De(t) {
+function Re(t) {
   const e = t.replace(/\\/g, "/").split("/").pop() || t, s = e.match(/^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})/);
   return s ? `${s[1]} ${s[2]}:${s[3]}:${s[4]}` : e.replace(/\.jsonl$/, "");
 }
-function Re(t) {
+function Fe(t) {
   const e = t.replace(/\\/g, "/").split("/"), s = e[e.length - 2] || "";
   return s ? s.replace(/^-/, "").replace(/-/g, "/") || "home" : "workspace";
 }
-function Fe(t, e = Date.now()) {
+function He(t, e = Date.now()) {
   if (!t) return "unknown";
   const s = e - t, n = Math.round(s / 6e4);
   if (n < 1) return "just now";
@@ -262,44 +262,44 @@ function Fe(t, e = Date.now()) {
   const o = Math.round(n / 60);
   return o < 24 ? `${o}h ago` : `${Math.round(o / 24)}d ago`;
 }
-async function He(t, e, s) {
+async function Be(t, e, s) {
   const n = e.includes("\\") ? "\\" : "/", o = [];
   if (s)
     o.push([e, s].join(n));
   else
     try {
-      const c = await t.workspace.readDir(e);
-      for (const y of c.entries)
+      const u = await t.workspace.readDir(e);
+      for (const y of u.entries)
         y.is_dir && y.name.startsWith("-") && o.push([e, y.name].join(n));
     } catch {
       return [];
     }
-  const i = Date.now(), l = [];
-  for (const c of o)
+  const i = Date.now(), r = [];
+  for (const u of o)
     try {
-      const y = await t.workspace.readDir(c);
-      for (const d of y.entries) {
-        if (d.is_dir || !d.name.endsWith(".jsonl") || d.name.startsWith("__") || !/^\d{4}-\d{2}-\d{2}T/.test(d.name)) continue;
-        const h = [c, d.name].join(n);
+      const y = await t.workspace.readDir(u);
+      for (const c of y.entries) {
+        if (c.is_dir || !c.name.endsWith(".jsonl") || c.name.startsWith("__") || !/^\d{4}-\d{2}-\d{2}T/.test(c.name)) continue;
+        const h = [u, c.name].join(n);
         let m = 0;
         try {
           m = (await t.workspace.stat(h)).modified || 0;
         } catch {
         }
-        l.push({
+        r.push({
           path: h,
-          name: d.name,
+          name: c.name,
           modified: m,
-          displayName: De(h),
-          workspace: Re(h),
-          ageLabel: Fe(m, i)
+          displayName: Re(h),
+          workspace: Fe(h),
+          ageLabel: He(m, i)
         });
       }
     } catch {
     }
-  return l.sort((c, y) => y.modified - c.modified || y.name.localeCompare(c.name)), l;
+  return r.sort((u, y) => y.modified - u.modified || y.name.localeCompare(u.name)), r;
 }
-class Be {
+class Ue {
   messages = [];
   sessionId = "";
   cwd = "";
@@ -327,10 +327,10 @@ class Be {
     }
     const i = n.slice(0, o);
     this.tail = n.slice(o + 1);
-    for (const l of i.split(`
+    for (const r of i.split(`
 `)) {
-      const c = l.trim();
-      c && this.applyLine(c);
+      const u = r.trim();
+      u && this.applyLine(u);
     }
     s && this.tail.trim() ? (this.applyLine(this.tail.trim()), this.tail = "") : s && (this.tail = "");
   }
@@ -383,24 +383,24 @@ class Be {
     const o = n.timestamp || this.updatedAt || Date.now();
     if (n.role === "assistant") {
       this.turns += 1;
-      let i = "", l = "";
-      const c = [], y = n.content;
+      let i = "", r = "";
+      const u = [], y = n.content;
       if (Array.isArray(y))
-        for (const d of y) {
-          const h = d;
+        for (const c of y) {
+          const h = c;
           if (h?.type === "text") i += `${h.text || ""}
 `;
-          else if (h?.type === "thinking") l += `${h.thinking || h.text || ""}
+          else if (h?.type === "thinking") r += `${h.thinking || h.text || ""}
 `;
           else if (h?.type === "toolCall") {
             const m = h.arguments ?? {}, w = {
-              id: h.id || `call-${this.messages.length}-${c.length}`,
+              id: h.id || `call-${this.messages.length}-${u.length}`,
               name: h.name || "tool",
               arguments: m,
-              argumentsLabel: Ue(m),
+              argumentsLabel: Ve(m),
               intent: h.intent
             };
-            c.push(w), this.pending.set(w.id, w);
+            u.push(w), this.pending.set(w.id, w);
           }
         }
       this.messages.push({
@@ -409,51 +409,51 @@ class Be {
         text: i.trim(),
         images: [],
         timestamp: o,
-        timeLabel: Rt(o),
+        timeLabel: Ht(o),
         cost: n.usage?.cost?.total,
         totalTokens: n.usage?.totalTokens,
-        thinking: l.trim() || void 0,
-        toolCalls: c.length ? c : void 0,
+        thinking: r.trim() || void 0,
+        toolCalls: u.length ? u : void 0,
         searchText: ""
       }), this.trim();
       return;
     }
     if (n.role === "user") {
       let i = "";
-      const l = [], c = n.content;
-      if (Array.isArray(c))
-        for (const y of c) {
-          const d = y;
-          d?.type === "text" ? i += `${d.text || ""}
-` : d?.type === "image" && (d.url ? l.push(d.url) : d.data && l.push(`data:${d.mediaType || "image/png"};base64,${d.data}`));
+      const r = [], u = n.content;
+      if (Array.isArray(u))
+        for (const y of u) {
+          const c = y;
+          c?.type === "text" ? i += `${c.text || ""}
+` : c?.type === "image" && (c.url ? r.push(c.url) : c.data && r.push(`data:${c.mediaType || "image/png"};base64,${c.data}`));
         }
-      else typeof c == "string" && (i = c);
+      else typeof u == "string" && (i = u);
       this.messages.push({
         id: s.id || `msg-${o}-${this.messages.length}`,
         role: "user",
         text: i.trim(),
-        images: l,
+        images: r,
         timestamp: o,
-        timeLabel: Rt(o),
+        timeLabel: Ht(o),
         searchText: ""
       }), this.trim();
       return;
     }
     if (n.role === "toolResult") {
       let i = "";
-      const l = n.content;
-      if (Array.isArray(l))
-        for (const d of l) {
-          const h = d;
+      const r = n.content;
+      if (Array.isArray(r))
+        for (const c of r) {
+          const h = c;
           h?.type === "text" && (i += `${h.text || ""}
 `);
         }
-      else typeof l == "string" && (i = l);
-      const c = n.toolCallId, y = c ? this.pending.get(c) : void 0;
-      if (y && c) {
-        y.result = i.trim(), y.isError = !!n.isError, this.pending.delete(c);
-        for (const d of this.messages)
-          d.toolCalls?.includes(y) && (d.searchText = "");
+      else typeof r == "string" && (i = r);
+      const u = n.toolCallId, y = u ? this.pending.get(u) : void 0;
+      if (y && u) {
+        y.result = i.trim(), y.isError = !!n.isError, this.pending.delete(u);
+        for (const c of this.messages)
+          c.toolCalls?.includes(y) && (c.searchText = "");
       } else
         this.messages.push({
           id: s.id || `msg-${o}-${this.messages.length}`,
@@ -461,20 +461,20 @@ class Be {
           text: i.trim(),
           images: [],
           timestamp: o,
-          timeLabel: Rt(o),
-          toolCallId: c,
+          timeLabel: Ht(o),
+          toolCallId: u,
           isError: !!n.isError,
           searchText: ""
         }), this.trim();
     }
   }
 }
-function Rt(t) {
+function Ht(t) {
   if (!t) return "";
   const e = new Date(t);
   return `${String(e.getHours()).padStart(2, "0")}:${String(e.getMinutes()).padStart(2, "0")}`;
 }
-function Ue(t) {
+function Ve(t) {
   if (typeof t == "string") return t;
   try {
     return JSON.stringify(t, null, 2);
@@ -482,15 +482,15 @@ function Ue(t) {
     return String(t);
   }
 }
-function Ve(t) {
+function je(t) {
   const e = [t.text];
   if (t.thinking && e.push(t.thinking), t.toolCalls)
     for (const s of t.toolCalls)
       e.push(s.name), s.intent && e.push(s.intent), s.result && e.push(s.result);
   return t.searchText = e.join(" ").toLowerCase(), t.searchText;
 }
-const je = 2 * 1024 * 1024, We = 6 * 1024 * 1024, Ye = 1024 * 1024, Ge = 6, j = /* @__PURE__ */ new Map();
-function Je(t, e, s, n = 0) {
+const We = 2 * 1024 * 1024, Ye = 6 * 1024 * 1024, Ge = 1024 * 1024, Je = 6, j = /* @__PURE__ */ new Map();
+function qe(t, e, s, n = 0) {
   return `${t}\0${e}\0${s}\0${n}`;
 }
 async function Ke(t, e, s, n) {
@@ -503,7 +503,7 @@ async function Ke(t, e, s, n) {
     return null;
   }
 }
-async function qe(t, e) {
+async function Ze(t, e) {
   const s = await t.exec.run(["file-metrics", e]).catch(() => null);
   if (!s || s.code !== 0 || !s.stdout.trim()) return null;
   try {
@@ -522,7 +522,7 @@ async function qe(t, e) {
     return null;
   }
 }
-function Ze(t, e, s, n, o) {
+function Qe(t, e, s, n, o) {
   return {
     ...t.stats(),
     filePath: e,
@@ -534,13 +534,13 @@ function Ze(t, e, s, n, o) {
     metricsExact: !1
   };
 }
-function Qt(t) {
+function Xt(t) {
   return t.map((e) => ({
     ...e,
     toolCalls: e.toolCalls?.map((s) => ({ ...s }))
   }));
 }
-function Qe(t) {
+function Xe(t) {
   const e = /* @__PURE__ */ new Map(), s = [];
   for (const n of t) {
     for (const o of n.toolCalls || []) e.set(o.id, { call: o, message: n });
@@ -555,19 +555,19 @@ function Qe(t) {
   }
   return s;
 }
-function Xe(t, e, s, n) {
+function ts(t, e, s, n) {
   let o = null;
   for (const i of j.values())
     i.data.filePath === t && i.size === e && i.mtime === s && i.data.startOffset > 0 && i.data.loadedBytes < n && (!o || i.data.loadedBytes > o.loadedBytes) && (o = i.data);
   return o;
 }
-async function ts(t, e, s, n, o) {
-  const i = new Be({ keepMessages: Number.MAX_SAFE_INTEGER });
-  let l = s, c = null, y = s, d = 0;
+async function es(t, e, s, n, o) {
+  const i = new Ue({ keepMessages: Number.MAX_SAFE_INTEGER });
+  let r = s, u = null, y = s, c = 0;
   for (; ; ) {
-    const h = await Ke(t, e, l, Ye);
+    const h = await Ke(t, e, r, Ge);
     if (!h) return null;
-    c ??= h, d === 0 && (y = h.start);
+    u ??= h, c === 0 && (y = h.start);
     let m = h.content, w = h.end;
     if (o !== void 0 && h.start >= o) break;
     if (o !== void 0 && w > o) {
@@ -575,52 +575,52 @@ async function ts(t, e, s, n, o) {
       m = new TextDecoder().decode(x.subarray(0, Math.max(0, o - h.start))), w = o;
     }
     const $ = new TextEncoder().encode(m).byteLength;
-    if (!$ && w <= l) return null;
-    if (i.push(m, h.eof || o !== void 0 && w >= o), d += $, w <= l || h.eof || o !== void 0 && w >= o || d >= n) break;
-    l = h.end;
+    if (!$ && w <= r) return null;
+    if (i.push(m, h.eof || o !== void 0 && w >= o), c += $, w <= r || h.eof || o !== void 0 && w >= o || c >= n) break;
+    r = h.end;
   }
-  return { parser: i, metadata: c, startOffset: y, loadedBytes: d };
+  return { parser: i, metadata: u, startOffset: y, loadedBytes: c };
 }
-function es(t, e) {
+function ss(t, e) {
   return e && (t.model = e.model, t.provider = e.provider, t.totalTokens = e.totalTokens, t.totalCost = e.totalCost, t.turns = e.turns, t.metricsExact = !0), t;
 }
-async function Xt(t, e, s = {}) {
+async function te(t, e, s = {}) {
   const n = await t.workspace.stat(e).catch(() => null);
   if (!n || n.is_dir) return null;
-  const o = Math.max(1, s.tailBytes ?? je), i = Math.max(1, s.historyBytes ?? We), l = s.before ?? Xe(e, n.size, n.modified || 0, o), c = Je(e, o, i, l?.startOffset || 0), y = j.get(c);
+  const o = Math.max(1, s.tailBytes ?? We), i = Math.max(1, s.historyBytes ?? Ye), r = s.before ?? ts(e, n.size, n.modified || 0, o), u = qe(e, o, i, r?.startOffset || 0), y = j.get(u);
   if (y && y.mtime === (n.modified || 0) && y.size === n.size)
-    return j.delete(c), j.set(c, y), y.data;
-  const d = l ? Math.min(l.startOffset, n.size) : void 0, h = d === void 0 ? Math.max(0, n.size - o) : Math.max(0, d - i), m = await ts(t, e, h, i, d);
+    return j.delete(u), j.set(u, y), y.data;
+  const c = r ? Math.min(r.startOffset, n.size) : void 0, h = c === void 0 ? Math.max(0, n.size - o) : Math.max(0, c - i), m = await es(t, e, h, i, c);
   if (!m) return null;
   let w;
-  if (l) {
-    const $ = Qe([...Qt(m.parser.messages), ...Qt(l.messages)]);
+  if (r) {
+    const $ = Xe([...Xt(m.parser.messages), ...Xt(r.messages)]);
     w = {
-      ...l,
+      ...r,
       messages: $,
-      droppedHead: m.startOffset > 0 || m.parser.droppedHead || l.droppedHead,
+      droppedHead: m.startOffset > 0 || m.parser.droppedHead || r.droppedHead,
       startOffset: m.startOffset,
-      loadedBytes: m.loadedBytes + l.loadedBytes,
+      loadedBytes: m.loadedBytes + r.loadedBytes,
       fileSize: n.size,
       metricsExact: !1
     }, !w.sessionId && m.parser.sessionId && (w.sessionId = m.parser.sessionId), !w.cwd && m.parser.cwd && (w.cwd = m.parser.cwd);
   } else
-    w = Ze(m.parser, e, n.size, m.startOffset, m.loadedBytes), !w.sessionId && m.metadata?.sessionId && (w.sessionId = m.metadata.sessionId), !w.cwd && m.metadata?.cwd && (w.cwd = m.metadata.cwd);
-  for (es(w, await qe(t, e)), j.set(c, { mtime: n.modified || 0, size: n.size, data: w }); j.size > Ge; ) j.delete(j.keys().next().value);
+    w = Qe(m.parser, e, n.size, m.startOffset, m.loadedBytes), !w.sessionId && m.metadata?.sessionId && (w.sessionId = m.metadata.sessionId), !w.cwd && m.metadata?.cwd && (w.cwd = m.metadata.cwd);
+  for (ss(w, await Ze(t, e)), j.set(u, { mtime: n.modified || 0, size: n.size, data: w }); j.size > Je; ) j.delete(j.keys().next().value);
   return w;
 }
-function ss() {
+function ns() {
   j.clear();
 }
-const Yt = {
+const Gt = {
   cwd: "",
   sessionFile: "",
   isRunning: !1,
   state: "inactive",
   summary: null
-}, ns = 3e4, as = 3e3, Gt = 600, L = /* @__PURE__ */ new Set();
-let O = null, R = Yt, It = "", yt = null, Pt = null, ot = null, Ft = null, Ht = "", Ct = 0, at = 0, W = null, $t = -1, Tt = "", X = !1, J = !1, it = null, Q = -1 / 0, Et = "";
-function ue(t) {
+}, as = 3e4, os = 3e3, Jt = 600, L = /* @__PURE__ */ new Set();
+let O = null, R = Gt, yt = "", _t = null, Et = null, ot = null, Bt = null, Ut = "", Tt = 0, J = 0, W = null, xt = -1, Pt = "", et = !1, q = !1, it = null, bt = 0, tt = -1 / 0, Lt = "";
+function de(t) {
   const e = t.summary;
   return [
     t.cwd,
@@ -636,13 +636,13 @@ function ue(t) {
     e ? e.totalCost : ""
   ].join("\0");
 }
-function Jt() {
+function qt() {
   if (typeof document < "u" && document.hidden) return !1;
   for (const t of L)
     if (!t.subscriber.visible || t.subscriber.visible()) return !0;
   return !1;
 }
-function de() {
+function pe() {
   for (const t of L)
     if (!t.disposed)
       try {
@@ -650,119 +650,137 @@ function de() {
       } catch {
       }
 }
-function zt() {
-  yt !== null && (clearTimeout(yt), yt = null);
+function Ot() {
+  _t !== null && (clearTimeout(_t), _t = null);
 }
-function os() {
+function is() {
   it !== null && (clearTimeout(it), it = null);
 }
 function Kt() {
-  Ct += 1, Ft?.dispose(), Ft = null, Ht = "";
+  Tt += 1, Bt?.dispose(), Bt = null, Ut = "";
 }
-function te() {
-  if (zt(), !O || L.size === 0 || W) return;
-  const t = R.state === "starting" ? as : R.sessionFile ? ns : 0;
-  if (!X && t === 0) return;
-  const e = X ? J ? 0 : Math.max(0, Q + Gt - Date.now()) : Math.max(0, Q + t - Date.now());
-  Jt() && (yt = setTimeout(() => {
-    yt = null, tt(J);
-  }, e));
+function ee() {
+  if (Ot(), !O || L.size === 0 || W) return;
+  const t = Date.now(), e = R.state === "starting" ? os : R.sessionFile ? as : bt > t ? 1e3 : 0;
+  if (!et && e === 0) return;
+  const s = et ? q ? 0 : Math.max(0, tt + Jt - t) : Math.max(0, tt + e - t);
+  qt() && (_t = setTimeout(() => {
+    _t = null, K(q);
+  }, s));
 }
-function is() {
+function rs() {
   const t = O;
   if (!t || L.size === 0) return;
   const e = R.sessionFile, s = Math.max(e.lastIndexOf("/"), e.lastIndexOf("\\")), n = s > 0 ? e.slice(0, s) : "";
-  if (n === Ht || (Kt(), !n || typeof t.workspace.watch != "function")) return;
-  Ht = n;
-  const o = Ct, i = (l) => l.replace(/\\/g, "/");
+  if (n === Ut || (Kt(), !n || typeof t.workspace.watch != "function")) return;
+  Ut = n;
+  const o = Tt, i = (r) => r.replace(/\\/g, "/");
   try {
-    const l = t.workspace.watch(n, (c) => {
-      O !== t || L.size === 0 || o !== Ct || c.type === "file_event" && (c.path && i(c.path) !== i(R.sessionFile) || (X = !0, W && (J = !0, it === null && Jt() && (it = setTimeout(() => {
-        it = null, tt(!0);
-      }, Gt))), tt(!1)));
+    const r = t.workspace.watch(n, (u) => {
+      O !== t || L.size === 0 || o !== Tt || u.type === "file_event" && (u.path && i(u.path) !== i(R.sessionFile) || (et = !0, W && (q = !0, it === null && qt() && (it = setTimeout(() => {
+        it = null, K(!0);
+      }, Jt))), K(!1)));
     });
-    Promise.resolve(l).then((c) => {
-      if (O !== t || L.size === 0 || o !== Ct) {
-        c?.dispose();
+    Promise.resolve(r).then((u) => {
+      if (O !== t || L.size === 0 || o !== Tt) {
+        u?.dispose();
         return;
       }
-      Ft = c;
+      Bt = u;
     }).catch(() => {
     });
   } catch {
   }
 }
-function Bt(t) {
-  !O || L.size === 0 || t === It || (at += 1, It = t, R = {
-    ...Yt,
-    cwd: O.terminal.activeCwd() || "",
+function zt(t) {
+  const e = O;
+  if (!e || L.size === 0 || t === yt) return;
+  J += 1, yt = t, bt = Date.now() + 6e3, R = {
+    ...Gt,
+    cwd: e.terminal.activeCwd() || "",
     isRunning: !0,
     state: "starting"
-  }, Et = ue(R), Q = -1 / 0, Kt(), X = !0, J = !0, de(), tt(!0));
+  }, Lt = de(R), tt = -1 / 0, Kt(), et = !0, q = !0, pe();
+  const s = J;
+  if ((e.terminal.activePaneId() || "") === t) {
+    K(!0);
+    return;
+  }
+  queueMicrotask(() => {
+    if (O !== e || L.size === 0 || s !== J) return;
+    const o = e.terminal.activePaneId() || t;
+    if (o !== yt) {
+      zt(o);
+      return;
+    }
+    K(!0);
+  });
 }
-function tt(t = !1) {
+function K(t = !1) {
   const e = O;
   if (!e || L.size === 0) return Promise.resolve();
   const s = e.terminal.activePaneId() || "";
-  if (s !== It)
-    return Bt(s), W || Promise.resolve();
-  if (X = !0, J ||= t, W && $t === at && Tt === s) return W;
-  if (!Jt() || !J && Date.now() - Q < Gt)
-    return te(), Promise.resolve();
-  zt();
-  const n = { paneId: s, cwd: e.terminal.activeCwd() || "" }, o = at;
-  X = !1, J = !1;
-  const i = Ne(e, n).then((l) => {
-    if (O !== e || L.size === 0 || o !== at) return;
-    const c = e.terminal.activePaneId() || "";
-    if (c !== n.paneId) {
-      Bt(c);
+  if (s !== yt)
+    return zt(s), W || Promise.resolve();
+  if (et = !0, q ||= t, W && xt === J && Pt === s) return W;
+  if (!qt() || !q && Date.now() - tt < Jt)
+    return ee(), Promise.resolve();
+  Ot();
+  const n = { paneId: s, cwd: e.terminal.activeCwd() || "" }, o = J;
+  et = !1, q = !1;
+  const i = De(e, n).then((r) => {
+    if (O !== e || L.size === 0 || o !== J) return;
+    const u = e.terminal.activePaneId() || "";
+    if (u !== n.paneId) {
+      zt(u);
       return;
     }
-    Q = Date.now();
-    const y = ue(l);
-    R = l, is(), y !== Et && (Et = y, de());
+    tt = Date.now();
+    const y = r.state === "inactive" && Date.now() < bt ? { ...r, cwd: r.cwd || n.cwd, isRunning: !0, state: "starting", summary: null } : r;
+    y.state !== "inactive" && (bt = 0);
+    const c = de(y);
+    R = y, rs(), c !== Lt && (Lt = c, pe());
   }).catch(() => {
-    O === e && o === at && (Q = Date.now());
+    O === e && o === J && (tt = Date.now());
   }).finally(() => {
-    W === i && (W = null, $t = -1, Tt = "", te());
+    W === i && (W = null, xt = -1, Pt = "", ee());
   });
-  return W = i, $t = o, Tt = n.paneId, Promise.resolve();
+  return W = i, xt = o, Pt = n.paneId, Promise.resolve();
 }
-function pe() {
-  at += 1, zt(), os(), Pt?.dispose(), Pt = null, Kt(), ot && typeof document < "u" && document.removeEventListener("visibilitychange", ot), ot = null, O = null, W = null, $t = -1, Tt = "", X = !1, J = !1, R = Yt, It = "", Et = "", Q = -1 / 0;
+function me() {
+  J += 1, Ot(), is(), Et?.dispose(), Et = null, Kt(), ot && typeof document < "u" && document.removeEventListener("visibilitychange", ot), ot = null, O = null, W = null, xt = -1, Pt = "", et = !1, q = !1, bt = 0, R = Gt, yt = "", Lt = "", tt = -1 / 0;
 }
-function me(t, e) {
+function he(t, e) {
   O = t;
   const s = { subscriber: e, disposed: !1 };
-  return L.add(s), !Pt && typeof t.terminal.onDidChangeActivePane == "function" && (Pt = t.terminal.onDidChangeActivePane((n) => {
-    O !== t || L.size === 0 || Bt(n || t.terminal.activePaneId() || "");
+  return L.add(s), !Et && typeof t.terminal.onDidChangeActivePane == "function" && (Et = t.terminal.onDidChangeActivePane((n) => {
+    O !== t || L.size === 0 || zt(n || t.terminal.activePaneId() || "");
   })), typeof document < "u" && !ot && (ot = () => {
-    document.hidden ? zt() : tt(!0);
-  }, document.addEventListener("visibilitychange", ot)), e.listener?.(R), tt(!0), {
+    document.hidden ? Ot() : K(!0);
+  }, document.addEventListener("visibilitychange", ot)), e.listener?.(R), K(!0), {
     dispose() {
-      s.disposed || (s.disposed = !0, L.delete(s), L.size === 0 && pe());
+      s.disposed || (s.disposed = !0, L.delete(s), L.size === 0 && me());
     }
   };
 }
-function xt() {
+function It() {
   return R;
 }
 function ls() {
-  L.clear(), pe();
+  L.clear(), me();
 }
-let ft = null, nt = null;
-function rs(t) {
+let ft = null, at = null;
+function cs(t) {
   return /^[A-Za-z]:[\\/]/.test(t) || t.includes("\\");
 }
-function lt(t, ...e) {
-  const s = rs(t) ? "\\" : "/";
+function rt(t, ...e) {
+  const s = cs(t) ? "\\" : "/";
   return [t.replace(/[\\/]+$/, ""), ...e].join(s);
 }
-async function rt(t) {
+async function lt(t) {
   if (ft) return ft;
-  if (nt) return nt;
-  nt = (async () => {
+  if (at) return at;
+  at = (async () => {
     try {
       const s = await t.exec.run(["doctor"]);
       if (s.code === 0 && s.stdout.trim())
@@ -771,113 +789,113 @@ async function rt(t) {
     }
     return null;
   })();
-  const e = await nt;
-  return nt = null, e;
+  const e = await at;
+  return at = null, e;
 }
-function cs() {
-  ft = null, nt = null;
+function us() {
+  ft = null, at = null;
 }
-const us = [
+const ds = [
   { category: "verification", match: /\b(test|verify|prove|gate|benchmark|regression|audit)\b/ },
   { category: "diagnostics", match: /\b(diagnos|debug|triage|trace|investigat|root cause)\b/ },
   { category: "delivery", match: /\b(deploy|release|ship|publish|rollout|ci|pipeline|merge)\b/ },
   { category: "authoring", match: /\b(write|author|document|readme|spec|plan|design)\b/ }
 ];
-let gt = [], Ut = 0;
-const ds = 6e4;
-function ps(t, e) {
+let gt = [], Vt = 0;
+const ps = 6e4;
+function ms(t, e) {
   const s = `${t} ${e}`.toLowerCase();
-  for (const n of us)
+  for (const n of ds)
     if (n.match.test(s)) return n.category;
   return "general";
 }
-function ms(t) {
+function hs(t) {
   const e = t.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!e) return { name: "", description: "", body: t };
   let s = "", n = "";
   for (const o of e[1].split(/\r?\n/)) {
     const i = o.match(/^name:\s*(.+)$/);
     i && (s = i[1].trim().replace(/^['"]|['"]$/g, ""));
-    const l = o.match(/^description:\s*(.+)$/);
-    l && (n = l[1].trim().replace(/^['"]|['"]$/g, ""));
+    const r = o.match(/^description:\s*(.+)$/);
+    r && (n = r[1].trim().replace(/^['"]|['"]$/g, ""));
   }
   return { name: s, description: n, body: e[2] };
 }
-async function hs(t) {
-  const e = await rt(t), s = [];
-  return e?.ompHome ? (s.push({ label: "managed", path: lt(e.ompHome, "managed-skills") }), s.push({ label: "project", path: lt(e.ompHome, "skills") })) : (s.push({ label: "managed", path: "~/.omp/agent/managed-skills" }), s.push({ label: "project", path: "~/.omp/agent/skills" })), e?.home ? s.push({ label: "user", path: lt(e.home, ".agents", "skills") }) : s.push({ label: "user", path: "~/.agents/skills" }), s;
+async function fs(t) {
+  const e = await lt(t), s = [];
+  return e?.ompHome ? (s.push({ label: "managed", path: rt(e.ompHome, "managed-skills") }), s.push({ label: "project", path: rt(e.ompHome, "skills") })) : (s.push({ label: "managed", path: "~/.omp/agent/managed-skills" }), s.push({ label: "project", path: "~/.omp/agent/skills" })), e?.home ? s.push({ label: "user", path: rt(e.home, ".agents", "skills") }) : s.push({ label: "user", path: "~/.agents/skills" }), s;
 }
-async function Vt(t, e = !1) {
+async function jt(t, e = !1) {
   const s = Date.now();
-  if (!e && gt.length && s - Ut < ds) return gt;
-  const n = await hs(t), o = n[0]?.path.includes("\\") ? "\\" : "/", i = /* @__PURE__ */ new Map();
-  for (const l of n) {
-    let c;
+  if (!e && gt.length && s - Vt < ps) return gt;
+  const n = await fs(t), o = n[0]?.path.includes("\\") ? "\\" : "/", i = /* @__PURE__ */ new Map();
+  for (const r of n) {
+    let u;
     try {
-      c = await t.workspace.readDir(l.path);
+      u = await t.workspace.readDir(r.path);
     } catch {
       continue;
     }
-    for (const y of c.entries) {
+    for (const y of u.entries) {
       if (!y.is_dir) continue;
-      const d = [l.path, y.name, "SKILL.md"].join(o);
+      const c = [r.path, y.name, "SKILL.md"].join(o);
       try {
-        const h = await t.workspace.readFile(d);
+        const h = await t.workspace.readFile(c);
         if (!h.content) continue;
-        const { name: m, description: w, body: $ } = ms(h.content), x = m || y.name;
+        const { name: m, description: w, body: $ } = hs(h.content), x = m || y.name;
         if (i.has(x)) continue;
         i.set(x, {
           id: x,
           name: x,
           description: w || "No description provided.",
-          category: ps(x, w),
-          source: l.label,
-          filePath: d,
+          category: ms(x, w),
+          source: r.label,
+          filePath: c,
           body: $
         });
       } catch {
       }
     }
   }
-  return gt = [...i.values()].sort((l, c) => l.name.localeCompare(c.name)), Ut = s, gt;
+  return gt = [...i.values()].sort((r, u) => r.name.localeCompare(u.name)), Vt = s, gt;
 }
-function fs(t, e, s = "all") {
+function gs(t, e, s = "all") {
   const o = e.trim().toLowerCase().split(/\s+/).filter(Boolean);
   return t.filter((i) => {
     if (s !== "all" && i.category !== s) return !1;
     if (!o.length) return !0;
-    const l = `${i.name} ${i.description}`.toLowerCase();
-    return o.every((c) => l.includes(c));
+    const r = `${i.name} ${i.description}`.toLowerCase();
+    return o.every((u) => r.includes(u));
   });
 }
-function he(t, e) {
+function fe(t, e) {
   const s = t.terminal.activePaneId();
   return s ? (t.terminal.send(s, `/skill ${e}
 `), t.ui.notify(`Injected skill ${e}`, "info"), !0) : (t.ui.notify("No active terminal pane to inject into", "warn"), !1);
 }
-function gs() {
-  gt = [], Ut = 0;
+function vs() {
+  gt = [], Vt = 0;
 }
-function ee(t, e) {
-  const n = t.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean), l = `omp-${(n[n.length - 1] || "workspace").replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 32) || "workspace"}`;
-  return e ? `${l}-${e}` : l;
+function se(t, e) {
+  const n = t.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean), r = `omp-${(n[n.length - 1] || "workspace").replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 32) || "workspace"}`;
+  return e ? `${r}-${e}` : r;
 }
-function fe(t) {
-  return !t || t.isDefault || t.id === wt ? [] : [`--config=${t.configPath}`];
+function ge(t) {
+  return !t || t.isDefault || t.id === kt ? [] : [`--config=${t.configPath}`];
 }
 function vt(t) {
   return `'${t.replace(/'/g, "'\\''")}'`;
 }
-async function _t(t, e = {}) {
-  const s = await rt(t), n = e.cwd || t.terminal.activeCwd() || s?.home || ".", o = e.target || "new-tab", i = fe(e.preset), l = e.preset && !e.preset.isDefault ? e.preset.id : "default", c = !!s?.tmux && s?.platform !== "win32", y = ["omp", ...i].map(vt).join(" "), d = `${y}; exec "$SHELL"`;
+async function wt(t, e = {}) {
+  const s = await lt(t), n = e.cwd || t.terminal.activeCwd() || s?.home || ".", o = e.target || "new-tab", i = ge(e.preset), r = e.preset && !e.preset.isDefault ? e.preset.id : "default", u = !!s?.tmux && s?.platform !== "win32", y = ["omp", ...i].map(vt).join(" "), c = `${y}; exec "$SHELL"`;
   if (o === "new-tab") {
-    const x = Math.random().toString(36).slice(2, 10), U = ee(n, x), F = c ? ["tmux", "new-session", "-s", U, "-c", n, "sh", "-c", d] : ["omp", ...i], H = await t.terminal.createTerminalTab({
+    const x = Math.random().toString(36).slice(2, 10), U = se(n, x), F = u ? ["tmux", "new-session", "-s", U, "-c", n, "sh", "-c", c] : ["omp", ...i], H = await t.terminal.createTerminalTab({
       cwd: n,
       argv: F,
-      title: `OMP: ${l}`
+      title: `OMP: ${r}`
     });
     return t.ui.notify(
-      c ? `OMP started in tmux session ${U}` : `OMP started with profile ${l}`,
+      u ? `OMP started in tmux session ${U}` : `OMP started with profile ${r}`,
       "info"
     ), H;
   }
@@ -887,23 +905,23 @@ async function _t(t, e = {}) {
   });
   if (!h)
     return t.ui.notify("Split failed: no active terminal tab", "warn"), null;
-  const m = h.replace(/[^a-zA-Z0-9_-]+/g, "").slice(0, 8) || Math.random().toString(36).slice(2, 10), w = ee(n, m), $ = c ? `tmux new-session -s ${vt(w)} -c ${vt(n)} sh -c ${vt(d)}` : y;
+  const m = h.replace(/[^a-zA-Z0-9_-]+/g, "").slice(0, 8) || Math.random().toString(36).slice(2, 10), w = se(n, m), $ = u ? `tmux new-session -s ${vt(w)} -c ${vt(n)} sh -c ${vt(c)}` : y;
   return t.terminal.send(h, `${$}
-`), t.ui.notify(`OMP started in a split pane with profile ${l}`, "info"), h;
+`), t.ui.notify(`OMP started in a split pane with profile ${r}`, "info"), h;
 }
-async function vs(t, e) {
+async function ys(t, e) {
   const s = t.terminal.activePaneId();
   if (!s)
     return t.ui.notify("No active terminal pane to launch into", "warn"), !1;
-  const o = ["omp", ...fe(e)].map(vt).join(" ");
+  const o = ["omp", ...ge(e)].map(vt).join(" ");
   return t.terminal.send(s, `${o}
 `), t.ui.notify(
     `Launching OMP with profile ${e && !e.isDefault ? e.id : "default"}`,
     "info"
   ), !0;
 }
-async function ge(t) {
-  const e = await rt(t);
+async function ve(t) {
+  const e = await lt(t);
   if (e && !e.tmux) {
     t.ui.notify("Copy-mode needs tmux, which was not found on this host", "warn");
     return;
@@ -915,14 +933,14 @@ async function ge(t) {
   }
   t.terminal.send(s, "["), t.ui.notify("Tmux copy-mode active. Scroll freely, press q to exit.", "info");
 }
-const wt = "default";
-async function Lt(t) {
-  const s = (await rt(t))?.ompHome || "~/.omp/agent", n = [
+const kt = "default";
+async function At(t) {
+  const s = (await lt(t))?.ompHome || "~/.omp/agent", n = [
     {
-      id: wt,
+      id: kt,
       label: "Default profile",
       fileName: "config.yml",
-      configPath: lt(s, "config.yml"),
+      configPath: rt(s, "config.yml"),
       isDefault: !0
     }
   ];
@@ -930,12 +948,12 @@ async function Lt(t) {
     const o = await t.workspace.readDir(s);
     for (const i of o.entries) {
       if (i.is_dir) continue;
-      const l = i.name.match(/^config\.(.+)\.ya?ml$/);
-      l && n.push({
-        id: l[1],
-        label: l[1],
+      const r = i.name.match(/^config\.(.+)\.ya?ml$/);
+      r && n.push({
+        id: r[1],
+        label: r[1],
         fileName: i.name,
-        configPath: lt(s, i.name),
+        configPath: rt(s, i.name),
         isDefault: !1
       });
     }
@@ -943,190 +961,190 @@ async function Lt(t) {
   }
   return n.sort((o, i) => o.isDefault !== i.isDefault ? o.isDefault ? -1 : 1 : o.id.localeCompare(i.id)), n;
 }
-function se(t, e, s) {
+function ne(t, e, s) {
   return e.map((n) => ({
     label: n.isDefault ? "Default profile" : n.id,
     detail: n.configPath,
     icon: "zap",
     action: () => {
-      _t(t, { preset: n, target: s });
+      wt(t, { preset: n, target: s });
     }
   }));
 }
-const ys = { class: "omp-app" }, _s = { class: "omp-app__bar" }, ws = { class: "omp-app__brand" }, bs = { class: "omp-app__version" }, ks = {
+const _s = { class: "omp-app" }, ws = { class: "omp-app__bar" }, bs = { class: "omp-app__brand" }, ks = { class: "omp-app__version" }, Ms = {
   class: "omp-app__tabs",
   role: "tablist",
   "aria-label": "OMP Pilot sections"
-}, Ss = ["aria-selected", "onClick"], Ms = {
+}, Ss = ["aria-selected", "onClick"], Cs = {
   key: 0,
   class: "omp-app__badge"
-}, Cs = { class: "omp-app__bar-actions" }, $s = ["value"], Ts = { class: "omp-app__body" }, xs = {
+}, $s = { class: "omp-app__bar-actions" }, Ts = ["value"], xs = { class: "omp-app__body" }, Ps = {
   key: 0,
   class: "omp-pane omp-pane--sessions"
-}, Is = { class: "omp-sessions" }, Ps = { class: "omp-sessions__head" }, Es = { class: "omp-field omp-field--search" }, Ls = { class: "omp-toggle" }, zs = {
+}, Is = { class: "omp-sessions" }, Es = { class: "omp-sessions__head" }, Ls = { class: "omp-field omp-field--search" }, zs = { class: "omp-toggle" }, As = {
   class: "omp-sessions__list",
   role: "listbox",
   "aria-label": "OMP sessions"
-}, As = {
+}, Os = {
   key: 0,
   class: "omp-hint"
-}, Os = {
+}, Ns = {
   key: 1,
   class: "omp-hint"
-}, Ns = ["aria-selected", "onClick"], Ds = { class: "omp-session__title" }, Rs = { class: "omp-session__meta" }, Fs = { class: "omp-transcript" }, Hs = { class: "omp-transcript__head" }, Bs = { class: "omp-transcript__meta" }, Us = { class: "omp-tag" }, Vs = { class: "omp-tag" }, js = { class: "omp-tag omp-tag--cost" }, Ws = { class: "omp-tag" }, Ys = { class: "omp-transcript__tools" }, Gs = { class: "omp-field omp-field--search" }, Js = {
+}, Ds = ["aria-selected", "onClick"], Rs = { class: "omp-session__title" }, Fs = { class: "omp-session__meta" }, Hs = { class: "omp-transcript" }, Bs = { class: "omp-transcript__head" }, Us = { class: "omp-transcript__meta" }, Vs = { class: "omp-tag" }, js = { class: "omp-tag" }, Ws = { class: "omp-tag omp-tag--cost" }, Ys = { class: "omp-tag" }, Gs = { class: "omp-transcript__tools" }, Js = { class: "omp-field omp-field--search" }, qs = {
   key: 0,
   class: "omp-banner omp-banner--action"
-}, Ks = ["disabled"], qs = { class: "omp-turns" }, Zs = {
+}, Ks = ["disabled"], Zs = { class: "omp-turns" }, Qs = {
   key: 0,
   class: "omp-hint"
-}, Qs = {
+}, Xs = {
   key: 1,
   class: "omp-hint"
-}, Xs = { class: "omp-turn__head" }, tn = { class: "omp-turn__role" }, en = { class: "omp-turn__time" }, sn = {
+}, tn = { class: "omp-turn__head" }, en = { class: "omp-turn__role" }, sn = { class: "omp-turn__time" }, nn = {
   key: 0,
   class: "omp-fold"
-}, nn = { class: "omp-code" }, an = {
+}, an = { class: "omp-code" }, on = {
   key: 1,
   class: "omp-turn__text"
-}, on = {
+}, rn = {
   key: 2,
   class: "omp-turn__images"
-}, ln = ["onClick"], rn = ["src"], cn = { class: "omp-fold__name" }, un = {
+}, ln = ["onClick"], cn = ["src"], un = { class: "omp-fold__name" }, dn = {
   key: 0,
   class: "omp-fold__intent"
-}, dn = { class: "omp-fold__state" }, pn = { class: "omp-code" }, mn = { class: "omp-code" }, hn = {
+}, pn = { class: "omp-fold__state" }, mn = { class: "omp-code" }, hn = { class: "omp-code" }, fn = {
   key: 1,
   class: "omp-empty"
-}, fn = {
+}, gn = {
   key: 1,
   class: "omp-pane omp-pane--skills"
-}, gn = { class: "omp-skills__head" }, vn = { class: "omp-field omp-field--search omp-field--grow" }, yn = { class: "omp-chips" }, _n = ["onClick"], wn = { class: "omp-skills__body" }, bn = { class: "omp-skills__grid" }, kn = {
+}, vn = { class: "omp-skills__head" }, yn = { class: "omp-field omp-field--search omp-field--grow" }, _n = { class: "omp-chips" }, wn = ["onClick"], bn = { class: "omp-skills__body" }, kn = { class: "omp-skills__grid" }, Mn = {
   key: 0,
   class: "omp-hint"
 }, Sn = {
   key: 1,
   class: "omp-hint"
-}, Mn = ["onClick"], Cn = { class: "omp-skill__title" }, $n = { class: "omp-skill__desc" }, Tn = { class: "omp-skill__tags" }, xn = { class: "omp-chip omp-chip--tiny" }, In = { class: "omp-chip omp-chip--tiny" }, Pn = {
+}, Cn = ["onClick"], $n = { class: "omp-skill__title" }, Tn = { class: "omp-skill__desc" }, xn = { class: "omp-skill__tags" }, Pn = { class: "omp-chip omp-chip--tiny" }, In = { class: "omp-chip omp-chip--tiny" }, En = {
   key: 0,
   class: "omp-skill-detail"
-}, En = { class: "omp-skill-detail__desc" }, Ln = { class: "omp-code omp-code--tall" }, zn = {
+}, Ln = { class: "omp-skill-detail__desc" }, zn = { class: "omp-code omp-code--tall" }, An = {
   key: 2,
   class: "omp-pane omp-pane--profiles"
-}, An = { class: "omp-profiles__grid" }, On = { class: "omp-profile__icon" }, Nn = { class: "omp-profile__actions" }, Dn = ["onClick"], Rn = ["onClick"], Fn = ["onClick"], Hn = ["src"], Bn = 6 * 1024 * 1024, Mt = 200, Un = /* @__PURE__ */ jt({
+}, On = { class: "omp-profiles__grid" }, Nn = { class: "omp-profile__icon" }, Dn = { class: "omp-profile__actions" }, Rn = ["onClick"], Fn = ["onClick"], Hn = ["onClick"], Bn = ["src"], Un = 6 * 1024 * 1024, $t = 200, Vn = /* @__PURE__ */ Wt({
   __name: "MainView",
   props: {
     api: {}
   },
   setup(t) {
-    const e = t, s = "1.1.2", n = ["all", "verification", "diagnostics", "delivery", "authoring", "general"], o = C("sessions"), i = C(""), l = C([]), c = C(!0), y = C(""), d = C(!0), h = C(""), m = C(null), w = C(!1), $ = C(!1), x = C(Mt), U = C(""), F = C(null);
+    const e = t, s = "1.1.2", n = ["all", "verification", "diagnostics", "delivery", "authoring", "general"], o = C("sessions"), i = C(""), r = C([]), u = C(!0), y = C(""), c = C(!0), h = C(""), m = C(null), w = C(!1), $ = C(!1), x = C($t), U = C(""), F = C(null);
     let H = 0;
-    const N = C([]), Y = C(!0), ct = C(""), ut = C("all"), z = C(null), K = C([]), et = C(wt), At = P(() => [
-      { id: "sessions", label: "Sessions", icon: "message-square", badge: l.value.length },
+    const N = C([]), Y = C(!0), ct = C(""), ut = C("all"), z = C(null), Z = C([]), st = C(kt), Nt = I(() => [
+      { id: "sessions", label: "Sessions", icon: "message-square", badge: r.value.length },
       { id: "skills", label: "Skills", icon: "book", badge: N.value.length },
-      { id: "profiles", label: "Profiles", icon: "zap", badge: K.value.length }
-    ]), kt = P(() => {
+      { id: "profiles", label: "Profiles", icon: "zap", badge: Z.value.length }
+    ]), St = I(() => {
       const b = y.value.trim().toLowerCase();
-      return b ? l.value.filter((u) => u.path.toLowerCase().includes(b)) : l.value;
-    }), dt = P(() => {
+      return b ? r.value.filter((d) => d.path.toLowerCase().includes(b)) : r.value;
+    }), dt = I(() => {
       if (!m.value) return [];
       const b = U.value.trim().toLowerCase();
-      return b ? m.value.messages.filter((u) => Ve(u).includes(b)) : m.value.messages;
-    }), St = P(() => {
+      return b ? m.value.messages.filter((d) => je(d).includes(b)) : m.value.messages;
+    }), Ct = I(() => {
       const b = dt.value;
       return b.length > x.value ? b.slice(b.length - x.value) : b;
-    }), pt = P(() => Math.max(0, dt.value.length - St.value.length)), M = P(() => fs(N.value, ct.value, ut.value)), _ = P(
-      () => K.value.find((b) => b.id === et.value) || null
+    }), pt = I(() => Math.max(0, dt.value.length - Ct.value.length)), S = I(() => gs(N.value, ct.value, ut.value)), _ = I(
+      () => Z.value.find((b) => b.id === st.value) || null
     );
     function B(b) {
       return b === "user" ? "terminal" : b === "assistant" ? "bot" : "code";
     }
-    function q(b) {
+    function Q(b) {
       return b === "user" ? "You" : b === "assistant" ? "Agent" : "Tool";
     }
-    async function Ot() {
-      c.value = !0;
+    async function Dt() {
+      u.value = !0;
       try {
         if (!i.value) {
-          const u = await rt(e.api);
-          i.value = u?.ompHome ? lt(u.ompHome, "sessions") : "~/.omp/agent/sessions";
+          const d = await lt(e.api);
+          i.value = d?.ompHome ? rt(d.ompHome, "sessions") : "~/.omp/agent/sessions";
         }
         let b;
-        if (d.value) {
-          const u = xt().sessionFile;
-          if (!u) {
-            l.value = [], h.value = "", m.value = null;
+        if (c.value) {
+          const d = It().sessionFile;
+          if (!d) {
+            r.value = [], h.value = "", m.value = null;
             return;
           }
-          const r = u.replace(/\\/g, "/").split("/");
-          b = r[r.length - 2];
+          const l = d.replace(/\\/g, "/").split("/");
+          b = l[l.length - 2];
         }
-        l.value = await He(e.api, i.value, b), l.value.length && !l.value.some((u) => u.path === h.value) && await qt(l.value[0].path);
+        r.value = await Be(e.api, i.value, b), r.value.length && !r.value.some((d) => d.path === h.value) && await Zt(r.value[0].path);
       } finally {
-        c.value = !1;
+        u.value = !1;
       }
     }
-    async function qt(b) {
-      const u = ++H;
-      h.value = b, x.value = Mt, w.value = !0;
+    async function Zt(b) {
+      const d = ++H;
+      h.value = b, x.value = $t, w.value = !0;
       try {
-        const r = await Xt(e.api, b);
-        u === H && h.value === b && (m.value = r);
+        const l = await te(e.api, b);
+        d === H && h.value === b && (m.value = l);
       } finally {
-        u === H && (w.value = !1);
-      }
-    }
-    async function ye() {
-      const b = m.value, u = H;
-      if (!(!b || b.startOffset <= 0 || $.value)) {
-        $.value = !0;
-        try {
-          const r = await Xt(e.api, b.filePath, {
-            historyBytes: Bn,
-            before: b
-          });
-          u === H && m.value === b && h.value === b.filePath && (m.value = r);
-        } finally {
-          u === H && ($.value = !1);
-        }
+        d === H && (w.value = !1);
       }
     }
     async function _e() {
-      Y.value = !0;
-      try {
-        N.value = await Vt(e.api), !z.value && N.value.length && (z.value = N.value[0]);
-      } finally {
-        Y.value = !1;
+      const b = m.value, d = H;
+      if (!(!b || b.startOffset <= 0 || $.value)) {
+        $.value = !0;
+        try {
+          const l = await te(e.api, b.filePath, {
+            historyBytes: Un,
+            before: b
+          });
+          d === H && m.value === b && h.value === b.filePath && (m.value = l);
+        } finally {
+          d === H && ($.value = !1);
+        }
       }
     }
     async function we() {
       Y.value = !0;
       try {
-        N.value = await Vt(e.api, !0), !z.value && N.value.length && (z.value = N.value[0]);
+        N.value = await jt(e.api), !z.value && N.value.length && (z.value = N.value[0]);
       } finally {
         Y.value = !1;
       }
     }
-    function be(b) {
-      he(e.api, b);
+    async function be() {
+      Y.value = !0;
+      try {
+        N.value = await jt(e.api, !0), !z.value && N.value.length && (z.value = N.value[0]);
+      } finally {
+        Y.value = !1;
+      }
     }
-    async function Nt(b, u) {
-      await _t(e.api, { preset: b, target: u });
+    function ke(b) {
+      fe(e.api, b);
     }
-    async function ke() {
-      await _t(e.api, { preset: _.value, target: "new-tab" });
+    async function Rt(b, d) {
+      await wt(e.api, { preset: b, target: d });
+    }
+    async function Me() {
+      await wt(e.api, { preset: _.value, target: "new-tab" });
     }
     async function Se() {
-      m.value && await _t(e.api, {
+      m.value && await wt(e.api, {
         preset: _.value,
         target: "new-tab",
         cwd: m.value.cwd || void 0
       });
     }
-    async function Me() {
+    async function Ce() {
       if (!m.value) return;
-      const b = m.value.messages.map((u) => `### ${q(u.role)}
+      const b = m.value.messages.map((d) => `### ${Q(d.role)}
 
-${u.text}
+${d.text}
 `).join(`
 ---
 
@@ -1137,191 +1155,191 @@ ${u.text}
         e.api.ui.notify("The browser refused clipboard access", "warn");
       }
     }
-    return re(async () => {
+    return ce(async () => {
       await Promise.all([
-        Lt(e.api).then((b) => {
-          K.value = b;
+        At(e.api).then((b) => {
+          Z.value = b;
         }),
-        Ot(),
-        _e()
+        Dt(),
+        we()
       ]);
-    }), (b, u) => (f(), v("div", ys, [
-      a("header", _s, [
-        a("div", ws, [
-          k(S, {
+    }), (b, d) => (f(), v("div", _s, [
+      a("header", ws, [
+        a("div", bs, [
+          k(M, {
             name: "bot",
             size: 18,
             class: "omp-app__brand-icon"
           }),
-          u[10] || (u[10] = a("span", { class: "omp-app__brand-name" }, "OMP Pilot", -1)),
-          a("span", bs, "v" + g(Le(s)), 1)
+          d[10] || (d[10] = a("span", { class: "omp-app__brand-name" }, "OMP Pilot", -1)),
+          a("span", ks, "v" + g(ze(s)), 1)
         ]),
-        a("nav", ks, [
-          (f(!0), v(E, null, D(At.value, (r) => (f(), v("button", {
-            key: r.id,
+        a("nav", Ms, [
+          (f(!0), v(E, null, D(Nt.value, (l) => (f(), v("button", {
+            key: l.id,
             type: "button",
             role: "tab",
-            class: A(["omp-app__tab", { "is-active": o.value === r.id }]),
-            "aria-selected": o.value === r.id,
-            onClick: (T) => o.value = r.id
+            class: A(["omp-app__tab", { "is-active": o.value === l.id }]),
+            "aria-selected": o.value === l.id,
+            onClick: (T) => o.value = l.id
           }, [
-            k(S, {
-              name: r.icon,
+            k(M, {
+              name: l.icon,
               size: 14
             }, null, 8, ["name"]),
-            a("span", null, g(r.label), 1),
-            r.badge ? (f(), v("span", Ms, g(r.badge), 1)) : I("", !0)
+            a("span", null, g(l.label), 1),
+            l.badge ? (f(), v("span", Cs, g(l.badge), 1)) : P("", !0)
           ], 10, Ss))), 128))
         ]),
-        a("div", Cs, [
-          Z(a("select", {
-            "onUpdate:modelValue": u[0] || (u[0] = (r) => et.value = r),
+        a("div", $s, [
+          X(a("select", {
+            "onUpdate:modelValue": d[0] || (d[0] = (l) => st.value = l),
             class: "omp-field omp-field--compact",
             "aria-label": "Launch profile"
           }, [
-            (f(!0), v(E, null, D(K.value, (r) => (f(), v("option", {
-              key: r.id,
-              value: r.id
-            }, g(r.label), 9, $s))), 128))
+            (f(!0), v(E, null, D(Z.value, (l) => (f(), v("option", {
+              key: l.id,
+              value: l.id
+            }, g(l.label), 9, Ts))), 128))
           ], 512), [
-            [ce, et.value]
+            [ue, st.value]
           ]),
           a("button", {
             type: "button",
             class: "omp-btn omp-btn--primary",
-            onClick: ke
+            onClick: Me
           }, [
-            k(S, {
+            k(M, {
               name: "play",
               size: 13
             }),
-            u[11] || (u[11] = a("span", null, "New OMP tab", -1))
+            d[11] || (d[11] = a("span", null, "New OMP tab", -1))
           ])
         ])
       ]),
-      a("main", Ts, [
-        o.value === "sessions" ? (f(), v("section", xs, [
+      a("main", xs, [
+        o.value === "sessions" ? (f(), v("section", Ps, [
           a("aside", Is, [
-            a("div", Ps, [
-              a("div", Es, [
-                k(S, {
+            a("div", Es, [
+              a("div", Ls, [
+                k(M, {
                   name: "search",
                   size: 13
                 }),
-                Z(a("input", {
-                  "onUpdate:modelValue": u[1] || (u[1] = (r) => y.value = r),
+                X(a("input", {
+                  "onUpdate:modelValue": d[1] || (d[1] = (l) => y.value = l),
                   type: "search",
                   placeholder: "Filter sessions",
                   "aria-label": "Filter sessions"
                 }, null, 512), [
-                  [Dt, y.value]
+                  [Ft, y.value]
                 ])
               ]),
               a("button", {
                 type: "button",
-                class: A(["omp-icon-btn", { "is-busy": c.value }]),
+                class: A(["omp-icon-btn", { "is-busy": u.value }]),
                 title: "Reload session list",
-                onClick: Ot
+                onClick: Dt
               }, [
-                k(S, {
+                k(M, {
                   name: "refresh",
                   size: 13
                 })
               ], 2)
             ]),
-            a("label", Ls, [
-              Z(a("input", {
-                "onUpdate:modelValue": u[2] || (u[2] = (r) => d.value = r),
+            a("label", zs, [
+              X(a("input", {
+                "onUpdate:modelValue": d[2] || (d[2] = (l) => c.value = l),
                 type: "checkbox",
-                onChange: Ot
+                onChange: Dt
               }, null, 544), [
-                [xe, d.value]
+                [Pe, c.value]
               ]),
-              u[12] || (u[12] = a("span", null, "This workspace only", -1))
+              d[12] || (d[12] = a("span", null, "This workspace only", -1))
             ]),
-            a("div", zs, [
-              c.value ? (f(), v("p", As, "Loading sessions...")) : kt.value.length ? I("", !0) : (f(), v("p", Os, " No transcripts found. Start OMP in a terminal tab and it will show up here. ")),
-              (f(!0), v(E, null, D(kt.value, (r) => (f(), v("button", {
-                key: r.path,
+            a("div", As, [
+              u.value ? (f(), v("p", Os, "Loading sessions...")) : St.value.length ? P("", !0) : (f(), v("p", Ns, " No transcripts found. Start OMP in a terminal tab and it will show up here. ")),
+              (f(!0), v(E, null, D(St.value, (l) => (f(), v("button", {
+                key: l.path,
                 type: "button",
                 role: "option",
-                class: A(["omp-session", { "is-active": h.value === r.path }]),
-                "aria-selected": h.value === r.path,
-                onClick: (T) => qt(r.path)
+                class: A(["omp-session", { "is-active": h.value === l.path }]),
+                "aria-selected": h.value === l.path,
+                onClick: (T) => Zt(l.path)
               }, [
-                a("span", Ds, [
-                  k(S, {
+                a("span", Rs, [
+                  k(M, {
                     name: "file-text",
                     size: 12
                   }),
-                  G(" " + g(r.displayName), 1)
+                  G(" " + g(l.displayName), 1)
                 ]),
-                a("span", Rs, [
-                  a("span", null, g(r.workspace), 1),
-                  a("span", null, g(r.ageLabel), 1)
+                a("span", Fs, [
+                  a("span", null, g(l.workspace), 1),
+                  a("span", null, g(l.ageLabel), 1)
                 ])
-              ], 10, Ns))), 128))
+              ], 10, Ds))), 128))
             ])
           ]),
-          a("div", Fs, [
+          a("div", Hs, [
             m.value ? (f(), v(E, { key: 0 }, [
-              a("header", Hs, [
-                a("div", Bs, [
-                  a("span", Us, [
-                    k(S, {
+              a("header", Bs, [
+                a("div", Us, [
+                  a("span", Vs, [
+                    k(M, {
                       name: "cpu",
                       size: 12
                     }),
                     G(g(m.value.model), 1)
                   ]),
-                  a("span", Vs, [
-                    k(S, {
+                  a("span", js, [
+                    k(M, {
                       name: "layers",
                       size: 12
                     }),
                     G(g(m.value.totalTokens.toLocaleString()) + " tok", 1)
                   ]),
-                  a("span", js, [
-                    k(S, {
+                  a("span", Ws, [
+                    k(M, {
                       name: "activity",
                       size: 12
                     }),
                     G(g(m.value.totalCost.toFixed(3)) + " USD" + g(m.value.metricsExact ? "" : " loaded"), 1)
                   ]),
-                  a("span", Ws, [
-                    k(S, {
+                  a("span", Ys, [
+                    k(M, {
                       name: "message-square",
                       size: 12
                     }),
                     G(g(m.value.messages.length) + " entries", 1)
                   ])
                 ]),
-                a("div", Ys, [
-                  a("div", Gs, [
-                    k(S, {
+                a("div", Gs, [
+                  a("div", Js, [
+                    k(M, {
                       name: "search",
                       size: 12
                     }),
-                    Z(a("input", {
-                      "onUpdate:modelValue": u[3] || (u[3] = (r) => U.value = r),
+                    X(a("input", {
+                      "onUpdate:modelValue": d[3] || (d[3] = (l) => U.value = l),
                       type: "search",
                       placeholder: "Filter turns",
                       "aria-label": "Filter turns"
                     }, null, 512), [
-                      [Dt, U.value]
+                      [Ft, U.value]
                     ])
                   ]),
                   a("button", {
                     type: "button",
                     class: "omp-btn",
                     title: "Copy the transcript as Markdown",
-                    onClick: Me
+                    onClick: Ce
                   }, [
-                    k(S, {
+                    k(M, {
                       name: "copy",
                       size: 12
                     }),
-                    u[13] || (u[13] = a("span", null, "Copy", -1))
+                    d[13] || (d[13] = a("span", null, "Copy", -1))
                   ]),
                   a("button", {
                     type: "button",
@@ -1329,257 +1347,257 @@ ${u.text}
                     title: "Open this workspace in a new OMP tab",
                     onClick: Se
                   }, [
-                    k(S, {
+                    k(M, {
                       name: "external-link",
                       size: 12
                     }),
-                    u[14] || (u[14] = a("span", null, "Open", -1))
+                    d[14] || (d[14] = a("span", null, "Open", -1))
                   ])
                 ])
               ]),
-              m.value.droppedHead ? (f(), v("div", Js, [
+              m.value.droppedHead ? (f(), v("div", qs, [
                 a("span", null, " Showing the last " + g((m.value.loadedBytes / 1048576).toFixed(1)) + " MB of " + g((m.value.fileSize / 1048576).toFixed(1)) + " MB (" + g(m.value.turns) + " turns" + g(m.value.metricsExact ? "" : " in loaded window") + "). ", 1),
                 a("button", {
                   type: "button",
                   class: "omp-btn",
                   disabled: $.value,
-                  onClick: ye
+                  onClick: _e
                 }, [
-                  k(S, {
+                  k(M, {
                     name: "history",
                     size: 12
                   }),
                   a("span", null, g($.value ? "Loading" : "Load earlier"), 1)
                 ], 8, Ks)
-              ])) : I("", !0),
-              a("div", qs, [
-                w.value ? (f(), v("p", Zs, "Reading transcript...")) : dt.value.length ? I("", !0) : (f(), v("p", Qs, "No turn matches that filter.")),
+              ])) : P("", !0),
+              a("div", Zs, [
+                w.value ? (f(), v("p", Qs, "Reading transcript...")) : dt.value.length ? P("", !0) : (f(), v("p", Xs, "No turn matches that filter.")),
                 pt.value ? (f(), v("button", {
                   key: 2,
                   type: "button",
                   class: "omp-btn omp-btn--wide",
-                  onClick: u[4] || (u[4] = (r) => x.value += Mt)
+                  onClick: d[4] || (d[4] = (l) => x.value += $t)
                 }, [
-                  k(S, {
+                  k(M, {
                     name: "chevron-up",
                     size: 12
                   }),
-                  a("span", null, "Show " + g(Math.min(pt.value, Mt)) + " earlier turns (" + g(pt.value) + " hidden)", 1)
-                ])) : I("", !0),
-                (f(!0), v(E, null, D(St.value, (r) => (f(), v("article", {
-                  key: r.id,
-                  class: A(["omp-turn", `omp-turn--${r.role}`])
+                  a("span", null, "Show " + g(Math.min(pt.value, $t)) + " earlier turns (" + g(pt.value) + " hidden)", 1)
+                ])) : P("", !0),
+                (f(!0), v(E, null, D(Ct.value, (l) => (f(), v("article", {
+                  key: l.id,
+                  class: A(["omp-turn", `omp-turn--${l.role}`])
                 }, [
-                  a("header", Xs, [
-                    a("span", tn, [
-                      k(S, {
-                        name: B(r.role),
+                  a("header", tn, [
+                    a("span", en, [
+                      k(M, {
+                        name: B(l.role),
                         size: 13
                       }, null, 8, ["name"]),
-                      G(" " + g(q(r.role)), 1)
+                      G(" " + g(Q(l.role)), 1)
                     ]),
-                    a("span", en, g(r.timeLabel), 1)
+                    a("span", sn, g(l.timeLabel), 1)
                   ]),
-                  r.thinking ? (f(), v("details", sn, [
-                    u[15] || (u[15] = a("summary", null, "Reasoning", -1)),
-                    a("pre", nn, g(r.thinking), 1)
-                  ])) : I("", !0),
-                  r.text ? (f(), v("pre", an, g(r.text), 1)) : I("", !0),
-                  r.images.length ? (f(), v("div", on, [
-                    (f(!0), v(E, null, D(r.images, (T, Ce) => (f(), v("button", {
-                      key: Ce,
+                  l.thinking ? (f(), v("details", nn, [
+                    d[15] || (d[15] = a("summary", null, "Reasoning", -1)),
+                    a("pre", an, g(l.thinking), 1)
+                  ])) : P("", !0),
+                  l.text ? (f(), v("pre", on, g(l.text), 1)) : P("", !0),
+                  l.images.length ? (f(), v("div", rn, [
+                    (f(!0), v(E, null, D(l.images, (T, $e) => (f(), v("button", {
+                      key: $e,
                       type: "button",
                       class: "omp-thumb",
-                      onClick: (La) => F.value = T
+                      onClick: (za) => F.value = T
                     }, [
                       a("img", {
                         src: T,
                         alt: "Attachment",
                         loading: "lazy"
-                      }, null, 8, rn)
+                      }, null, 8, cn)
                     ], 8, ln))), 128))
-                  ])) : I("", !0),
-                  (f(!0), v(E, null, D(r.toolCalls || [], (T) => (f(), v("details", {
+                  ])) : P("", !0),
+                  (f(!0), v(E, null, D(l.toolCalls || [], (T) => (f(), v("details", {
                     key: T.id,
                     class: A(["omp-fold omp-fold--tool", { "is-error": T.isError }])
                   }, [
                     a("summary", null, [
-                      a("span", cn, g(T.name), 1),
-                      T.intent ? (f(), v("span", un, g(T.intent), 1)) : I("", !0),
-                      a("span", dn, g(T.isError ? "failed" : "ok"), 1)
+                      a("span", un, g(T.name), 1),
+                      T.intent ? (f(), v("span", dn, g(T.intent), 1)) : P("", !0),
+                      a("span", pn, g(T.isError ? "failed" : "ok"), 1)
                     ]),
-                    u[17] || (u[17] = a("p", { class: "omp-fold__label" }, "Arguments", -1)),
-                    a("pre", pn, g(T.argumentsLabel), 1),
+                    d[17] || (d[17] = a("p", { class: "omp-fold__label" }, "Arguments", -1)),
+                    a("pre", mn, g(T.argumentsLabel), 1),
                     T.result ? (f(), v(E, { key: 0 }, [
-                      u[16] || (u[16] = a("p", { class: "omp-fold__label" }, "Result", -1)),
-                      a("pre", mn, g(T.result), 1)
-                    ], 64)) : I("", !0)
+                      d[16] || (d[16] = a("p", { class: "omp-fold__label" }, "Result", -1)),
+                      a("pre", hn, g(T.result), 1)
+                    ], 64)) : P("", !0)
                   ], 2))), 128))
                 ], 2))), 128))
               ])
-            ], 64)) : (f(), v("div", hn, [
-              k(S, {
+            ], 64)) : (f(), v("div", fn, [
+              k(M, {
                 name: "history",
                 size: 28
               }),
-              u[18] || (u[18] = a("p", null, "Select a session on the left to read its transcript.", -1))
+              d[18] || (d[18] = a("p", null, "Select a session on the left to read its transcript.", -1))
             ]))
           ])
-        ])) : I("", !0),
-        o.value === "skills" ? (f(), v("section", fn, [
-          a("div", gn, [
-            a("div", vn, [
-              k(S, {
+        ])) : P("", !0),
+        o.value === "skills" ? (f(), v("section", gn, [
+          a("div", vn, [
+            a("div", yn, [
+              k(M, {
                 name: "search",
                 size: 14
               }),
-              Z(a("input", {
-                "onUpdate:modelValue": u[5] || (u[5] = (r) => ct.value = r),
+              X(a("input", {
+                "onUpdate:modelValue": d[5] || (d[5] = (l) => ct.value = l),
                 type: "search",
                 placeholder: "Search skills by name or intent",
                 "aria-label": "Search skills"
               }, null, 512), [
-                [Dt, ct.value]
+                [Ft, ct.value]
               ])
             ]),
             a("button", {
               type: "button",
               class: "omp-icon-btn",
               title: "Reload skills",
-              onClick: we
+              onClick: be
             }, [
-              k(S, {
+              k(M, {
                 name: "refresh",
                 size: 13
               })
             ])
           ]),
-          a("div", yn, [
-            (f(), v(E, null, D(n, (r) => a("button", {
-              key: r,
+          a("div", _n, [
+            (f(), v(E, null, D(n, (l) => a("button", {
+              key: l,
               type: "button",
-              class: A(["omp-chip", { "is-active": ut.value === r }]),
-              onClick: (T) => ut.value = r
-            }, g(r), 11, _n)), 64))
+              class: A(["omp-chip", { "is-active": ut.value === l }]),
+              onClick: (T) => ut.value = l
+            }, g(l), 11, wn)), 64))
           ]),
-          a("div", wn, [
-            a("div", bn, [
-              Y.value ? (f(), v("p", kn, "Indexing skills...")) : M.value.length ? I("", !0) : (f(), v("p", Sn, "No skill matches that search.")),
-              (f(!0), v(E, null, D(M.value, (r) => (f(), v("button", {
-                key: r.id,
+          a("div", bn, [
+            a("div", kn, [
+              Y.value ? (f(), v("p", Mn, "Indexing skills...")) : S.value.length ? P("", !0) : (f(), v("p", Sn, "No skill matches that search.")),
+              (f(!0), v(E, null, D(S.value, (l) => (f(), v("button", {
+                key: l.id,
                 type: "button",
-                class: A(["omp-skill", { "is-active": z.value?.id === r.id }]),
-                onClick: (T) => z.value = r
+                class: A(["omp-skill", { "is-active": z.value?.id === l.id }]),
+                onClick: (T) => z.value = l
               }, [
-                a("span", Cn, [
-                  k(S, {
+                a("span", $n, [
+                  k(M, {
                     name: "book",
                     size: 13
                   }),
-                  G(" " + g(r.name), 1)
+                  G(" " + g(l.name), 1)
                 ]),
-                a("span", $n, g(r.description), 1),
-                a("span", Tn, [
-                  a("span", xn, g(r.category), 1),
-                  a("span", In, g(r.source), 1)
+                a("span", Tn, g(l.description), 1),
+                a("span", xn, [
+                  a("span", Pn, g(l.category), 1),
+                  a("span", In, g(l.source), 1)
                 ])
-              ], 10, Mn))), 128))
+              ], 10, Cn))), 128))
             ]),
-            z.value ? (f(), v("aside", Pn, [
+            z.value ? (f(), v("aside", En, [
               a("header", null, [
                 a("h3", null, g(z.value.name), 1),
                 a("button", {
                   type: "button",
                   class: "omp-btn omp-btn--primary",
-                  onClick: u[6] || (u[6] = (r) => be(z.value.name))
+                  onClick: d[6] || (d[6] = (l) => ke(z.value.name))
                 }, [
-                  k(S, {
+                  k(M, {
                     name: "terminal",
                     size: 12
                   }),
-                  u[19] || (u[19] = a("span", null, "Inject", -1))
+                  d[19] || (d[19] = a("span", null, "Inject", -1))
                 ])
               ]),
-              a("p", En, g(z.value.description), 1),
-              a("pre", Ln, g(z.value.body || "This skill has no body."), 1)
-            ])) : I("", !0)
+              a("p", Ln, g(z.value.description), 1),
+              a("pre", zn, g(z.value.body || "This skill has no body."), 1)
+            ])) : P("", !0)
           ])
-        ])) : I("", !0),
-        o.value === "profiles" ? (f(), v("section", zn, [
-          u[23] || (u[23] = a("header", { class: "omp-profiles__head" }, [
+        ])) : P("", !0),
+        o.value === "profiles" ? (f(), v("section", An, [
+          d[23] || (d[23] = a("header", { class: "omp-profiles__head" }, [
             a("h2", null, "Profiles"),
             a("p", null, "Discovered from the OMP agent directory. Launch one into a new tab or a split pane.")
           ], -1)),
-          a("div", An, [
-            (f(!0), v(E, null, D(K.value, (r) => (f(), v("article", {
-              key: r.id,
-              class: A(["omp-profile", { "is-default": r.isDefault }])
+          a("div", On, [
+            (f(!0), v(E, null, D(Z.value, (l) => (f(), v("article", {
+              key: l.id,
+              class: A(["omp-profile", { "is-default": l.isDefault }])
             }, [
               a("header", null, [
-                a("span", On, [
-                  k(S, {
+                a("span", Nn, [
+                  k(M, {
                     name: "zap",
                     size: 16
                   })
                 ]),
                 a("div", null, [
-                  a("h3", null, g(r.label), 1),
-                  a("code", null, g(r.fileName), 1)
+                  a("h3", null, g(l.label), 1),
+                  a("code", null, g(l.fileName), 1)
                 ])
               ]),
-              a("div", Nn, [
+              a("div", Dn, [
                 a("button", {
                   type: "button",
                   class: "omp-btn omp-btn--primary",
-                  onClick: (T) => Nt(r, "new-tab")
+                  onClick: (T) => Rt(l, "new-tab")
                 }, [
-                  k(S, {
+                  k(M, {
                     name: "play",
                     size: 12
                   }),
-                  u[20] || (u[20] = a("span", null, "New tab", -1))
-                ], 8, Dn),
-                a("button", {
-                  type: "button",
-                  class: "omp-btn",
-                  onClick: (T) => Nt(r, "split-v")
-                }, [
-                  k(S, {
-                    name: "split-vertical",
-                    size: 12
-                  }),
-                  u[21] || (u[21] = a("span", null, "Split right", -1))
+                  d[20] || (d[20] = a("span", null, "New tab", -1))
                 ], 8, Rn),
                 a("button", {
                   type: "button",
                   class: "omp-btn",
-                  onClick: (T) => Nt(r, "split-h")
+                  onClick: (T) => Rt(l, "split-v")
                 }, [
-                  k(S, {
+                  k(M, {
+                    name: "split-vertical",
+                    size: 12
+                  }),
+                  d[21] || (d[21] = a("span", null, "Split right", -1))
+                ], 8, Fn),
+                a("button", {
+                  type: "button",
+                  class: "omp-btn",
+                  onClick: (T) => Rt(l, "split-h")
+                }, [
+                  k(M, {
                     name: "split-horizontal",
                     size: 12
                   }),
-                  u[22] || (u[22] = a("span", null, "Split down", -1))
-                ], 8, Fn)
+                  d[22] || (d[22] = a("span", null, "Split down", -1))
+                ], 8, Hn)
               ])
             ], 2))), 128))
           ])
-        ])) : I("", !0)
+        ])) : P("", !0)
       ]),
       F.value ? (f(), v("div", {
         key: 0,
         class: "omp-lightbox",
         role: "dialog",
         "aria-modal": "true",
-        onClick: u[9] || (u[9] = (r) => F.value = null)
+        onClick: d[9] || (d[9] = (l) => F.value = null)
       }, [
         a("button", {
           type: "button",
           class: "omp-lightbox__close",
           "aria-label": "Close image",
-          onClick: u[7] || (u[7] = (r) => F.value = null)
+          onClick: d[7] || (d[7] = (l) => F.value = null)
         }, [
-          k(S, {
+          k(M, {
             name: "x",
             size: 18
           })
@@ -1587,43 +1605,43 @@ ${u.text}
         a("img", {
           src: F.value,
           alt: "Attachment preview",
-          onClick: u[8] || (u[8] = st(() => {
+          onClick: d[8] || (d[8] = nt(() => {
           }, ["stop"]))
-        }, null, 8, Hn)
-      ])) : I("", !0)
+        }, null, 8, Bn)
+      ])) : P("", !0)
     ]));
   }
-}), Vn = /* @__PURE__ */ Wt(Un, [["__scopeId", "data-v-1254bca8"]]), jn = { class: "omp-hud__bar" }, Wn = {
+}), jn = /* @__PURE__ */ Yt(Vn, [["__scopeId", "data-v-1254bca8"]]), Wn = { class: "omp-hud__bar" }, Yn = {
   class: "omp-hud__grip",
   "data-drag-handle": "",
   title: "Drag to move"
-}, Yn = ["title"], Gn = {
+}, Gn = ["title"], Jn = {
   key: 0,
   class: "omp-hud__peek"
-}, Jn = ["title", "aria-expanded"], Kn = { class: "omp-hud__body" }, qn = { class: "omp-hud__row" }, Zn = ["title"], Qn = { class: "omp-hud__chip-text" }, Xn = ["title"], ta = { class: "omp-hud__chip-text" }, ea = { class: "omp-hud__row" }, sa = ["title"], na = { class: "omp-hud__chip-text" }, aa = ["title"], oa = { class: "omp-hud__chip-text" }, ia = { class: "omp-hud__status" }, la = { class: "omp-hud__turns" }, ra = { class: "omp-hud__actions" }, ca = ["disabled", "title"], ua = {
+}, qn = ["title", "aria-expanded"], Kn = { class: "omp-hud__body" }, Zn = { class: "omp-hud__row" }, Qn = ["title"], Xn = { class: "omp-hud__chip-text" }, ta = ["title"], ea = { class: "omp-hud__chip-text" }, sa = { class: "omp-hud__row" }, na = ["title"], aa = { class: "omp-hud__chip-text" }, oa = ["title"], ia = { class: "omp-hud__chip-text" }, ra = { class: "omp-hud__status" }, la = { class: "omp-hud__turns" }, ca = { class: "omp-hud__actions" }, ua = ["disabled", "title"], da = {
   key: 1,
   class: "omp-hud__placeholder"
-}, da = { class: "omp-hud__placeholder-title" }, pa = { class: "omp-hud__placeholder-note" }, ma = { class: "omp-hud__placeholder" }, ha = { class: "omp-hud__launch" }, fa = ["disabled"], ga = ["value"], va = ["disabled"], ne = "dinotty-omp.preset", ae = "dinotty-omp.presets", ya = 12e3, _a = /* @__PURE__ */ jt({
+}, pa = { class: "omp-hud__placeholder-title" }, ma = { class: "omp-hud__placeholder-note" }, ha = { class: "omp-hud__placeholder" }, fa = { class: "omp-hud__launch" }, ga = ["disabled"], va = ["value"], ya = ["disabled"], ae = "dinotty-omp.preset", oe = "dinotty-omp.presets", _a = 12e3, wa = /* @__PURE__ */ Wt({
   __name: "MiniHudOverlay",
   props: {
     api: {},
     dragging: { type: Boolean }
   },
   setup(t) {
-    const e = t, s = C(!1), n = C(!1), o = C(!0), i = C(!0), l = C([]), c = C(wt), d = C({ cwd: "", sessionFile: "", isRunning: !1, state: "inactive", summary: null }), h = C(!1);
+    const e = t, s = C(!1), n = C(!1), o = C(!0), i = C(!0), r = C([]), u = C(kt), c = C({ cwd: "", sessionFile: "", isRunning: !1, state: "inactive", summary: null }), h = C(!1);
     let m = 0, w, $ = !1;
-    const x = [], U = P(
-      () => l.value.find((M) => M.id === c.value) || null
-    ), F = P(() => {
-      const _ = (d.value.summary?.model || "").split("/").pop() || "omp";
+    const x = [], U = I(
+      () => r.value.find((S) => S.id === u.value) || null
+    ), F = I(() => {
+      const _ = (c.value.summary?.model || "").split("/").pop() || "omp";
       return _.length > 18 ? `${_.slice(0, 17)}...` : _;
-    }), H = P(() => {
-      const M = d.value.summary?.totalTokens || 0;
-      return M >= 1e6 ? `${(M / 1e6).toFixed(1)}M tok` : M >= 1e3 ? `${Math.round(M / 1e3)}k tok` : `${M} tok`;
-    }), N = P(() => {
-      if (d.value.state === "inactive") return "Inactive";
-      if (d.value.state === "starting") return "Starting";
-      switch (d.value.summary?.status) {
+    }), H = I(() => {
+      const S = c.value.summary?.totalTokens || 0;
+      return S >= 1e6 ? `${(S / 1e6).toFixed(1)}M tok` : S >= 1e3 ? `${Math.round(S / 1e3)}k tok` : `${S} tok`;
+    }), N = I(() => {
+      if (c.value.state === "inactive") return "Inactive";
+      if (c.value.state === "starting") return "Starting";
+      switch (c.value.summary?.status) {
         case "running_tool":
           return "Running a tool";
         case "thinking":
@@ -1633,89 +1651,89 @@ ${u.text}
         default:
           return "Waiting for you";
       }
-    }), Y = P(() => d.value.state === "inactive" ? "is-inactive" : d.value.state === "starting" ? "is-starting" : `is-${d.value.summary?.status || "idle"}`), ct = P(() => {
-      const M = d.value.cwd;
-      if (!M) return "this pane";
-      const _ = M.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean);
-      return _[_.length - 1] || M;
-    }), ut = P(() => d.value.state === "inactive" ? "Inactive" : d.value.state === "starting" ? "Starting" : `${F.value} · ${d.value.summary?.totalCost.toFixed(2) || "0.00"} USD`);
+    }), Y = I(() => c.value.state === "inactive" ? "is-inactive" : c.value.state === "starting" ? "is-starting" : `is-${c.value.summary?.status || "idle"}`), ct = I(() => {
+      const S = c.value.cwd;
+      if (!S) return "this pane";
+      const _ = S.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean);
+      return _[_.length - 1] || S;
+    }), ut = I(() => c.value.state === "inactive" ? "Inactive" : c.value.state === "starting" ? "Starting" : `${F.value} · ${c.value.summary?.totalCost.toFixed(2) || "0.00"} USD`);
     function z() {
       try {
-        const M = localStorage.getItem(ae), _ = M ? JSON.parse(M) : [];
+        const S = localStorage.getItem(oe), _ = S ? JSON.parse(S) : [];
         return Array.isArray(_) ? _ : [];
       } catch {
         return [];
       }
     }
-    function K(M) {
+    function Z(S) {
       try {
-        localStorage.setItem(ae, JSON.stringify(M));
+        localStorage.setItem(oe, JSON.stringify(S));
       } catch {
       }
     }
-    function et() {
+    function st() {
       try {
-        localStorage.setItem(ne, c.value);
+        localStorage.setItem(ae, u.value);
       } catch {
       }
     }
-    function At(M) {
+    function Nt(S) {
       if (!$) {
-        if (h.value = !0, M.state === "inactive" && n.value && Date.now() < m) {
-          d.value = { ...M, state: "starting" };
+        if (h.value = !0, S.state === "inactive" && n.value && Date.now() < m) {
+          c.value = { ...S, state: "starting" };
           return;
         }
-        (M.state !== "inactive" || Date.now() >= m) && (n.value = !1), d.value = M;
+        (S.state !== "inactive" || Date.now() >= m) && (n.value = !1), c.value = S;
       }
     }
-    function kt() {
+    function St() {
       e.api.open();
     }
     async function dt() {
-      await ge(e.api);
+      await ve(e.api);
     }
-    async function St() {
-      await _t(e.api, { preset: U.value, target: "split-v" });
+    async function Ct() {
+      await wt(e.api, { preset: U.value, target: "split-v" });
     }
     async function pt() {
-      !await vs(e.api, U.value) || $ || (et(), n.value = !0, d.value = { ...d.value, state: "starting", summary: null }, m = Date.now() + ya, w !== void 0 && window.clearTimeout(w), w = window.setTimeout(() => {
-        w = void 0, $ || tt(!0);
+      !await ys(e.api, U.value) || $ || (st(), n.value = !0, c.value = { ...c.value, state: "starting", summary: null }, m = Date.now() + _a, w !== void 0 && window.clearTimeout(w), w = window.setTimeout(() => {
+        w = void 0, $ || K(!0);
       }, 600));
     }
-    return re(async () => {
+    return ce(async () => {
       try {
-        const q = localStorage.getItem(ne);
-        q && (c.value = q);
+        const Q = localStorage.getItem(ae);
+        Q && (u.value = Q);
       } catch {
       }
-      const M = z();
-      M.length && (l.value = M, o.value = !1), x.push(
-        me(e.api, {
-          listener: At,
+      const S = z();
+      S.length && (r.value = S, o.value = !1), x.push(
+        he(e.api, {
+          listener: Nt,
           visible: () => !s.value
         })
       );
-      const _ = await rt(e.api);
+      const _ = await lt(e.api);
       if ($) return;
       i.value = _ ? _.tmux : !0;
-      const B = await Lt(e.api);
-      $ || (l.value = B, K(l.value), l.value.some((q) => q.id === c.value) || (c.value = wt), o.value = !1);
-    }), $e(() => {
+      const B = await At(e.api);
+      $ || (r.value = B, Z(r.value), r.value.some((Q) => Q.id === u.value) || (u.value = kt), o.value = !1);
+    }), Te(() => {
       $ = !0, w !== void 0 && (window.clearTimeout(w), w = void 0);
-      for (const M of x)
+      for (const S of x)
         try {
-          M.dispose();
+          S.dispose();
         } catch {
         }
       x.length = 0;
-    }), (M, _) => (f(), v("section", {
-      class: A(["omp-hud", [`is-${d.value.state}`, { "is-collapsed": s.value, "is-dragging": t.dragging }]]),
+    }), (S, _) => (f(), v("section", {
+      class: A(["omp-hud", [`is-${c.value.state}`, { "is-collapsed": s.value, "is-dragging": t.dragging }]]),
       role: "status",
       "aria-live": "polite"
     }, [
-      a("header", jn, [
-        a("div", Wn, [
-          k(S, {
+      a("header", Wn, [
+        a("div", Yn, [
+          k(M, {
             name: "bot",
             size: 15,
             class: "omp-hud__logo"
@@ -1724,14 +1742,14 @@ ${u.text}
           a("span", {
             class: A(["omp-hud__beacon", Y.value]),
             title: N.value
-          }, null, 10, Yn),
-          s.value ? (f(), v("span", Gn, g(ut.value), 1)) : I("", !0)
+          }, null, 10, Gn),
+          s.value ? (f(), v("span", Jn, g(ut.value), 1)) : P("", !0)
         ]),
         a("div", {
           class: "omp-hud__tools",
-          onPointerdown: _[3] || (_[3] = st(() => {
+          onPointerdown: _[3] || (_[3] = nt(() => {
           }, ["stop"])),
-          onMousedown: _[4] || (_[4] = st(() => {
+          onMousedown: _[4] || (_[4] = nt(() => {
           }, ["stop"]))
         }, [
           a("button", {
@@ -1739,80 +1757,80 @@ ${u.text}
             class: "omp-hud__icon",
             title: s.value ? "Expand panel" : "Collapse panel",
             "aria-expanded": !s.value,
-            onPointerdown: _[0] || (_[0] = st(() => {
+            onPointerdown: _[0] || (_[0] = nt(() => {
             }, ["stop"])),
-            onMousedown: _[1] || (_[1] = st(() => {
+            onMousedown: _[1] || (_[1] = nt(() => {
             }, ["stop"])),
-            onClick: _[2] || (_[2] = st((B) => s.value = !s.value, ["stop"]))
+            onClick: _[2] || (_[2] = nt((B) => s.value = !s.value, ["stop"]))
           }, [
-            k(S, {
+            k(M, {
               name: s.value ? "chevron-down" : "chevron-up",
               size: 13
             }, null, 8, ["name"])
-          ], 40, Jn)
+          ], 40, qn)
         ], 32)
       ]),
-      Z(a("div", Kn, [
-        d.value.state === "running" && d.value.summary ? (f(), v(E, { key: 0 }, [
-          a("div", qn, [
+      X(a("div", Kn, [
+        c.value.state === "running" && c.value.summary ? (f(), v(E, { key: 0 }, [
+          a("div", Zn, [
             a("span", {
               class: "omp-hud__chip",
-              title: `Model: ${d.value.summary.model}`
+              title: `Model: ${c.value.summary.model}`
             }, [
-              k(S, {
+              k(M, {
                 name: "cpu",
                 size: 12
               }),
-              a("span", Qn, g(F.value), 1)
-            ], 8, Zn),
+              a("span", Xn, g(F.value), 1)
+            ], 8, Qn),
             a("span", {
               class: "omp-hud__chip",
-              title: `Thinking level: ${d.value.summary.thinkingLevel}`
+              title: `Thinking level: ${c.value.summary.thinkingLevel}`
             }, [
-              k(S, {
+              k(M, {
                 name: "zap",
                 size: 12
               }),
-              a("span", ta, g(d.value.summary.thinkingLevel), 1)
-            ], 8, Xn)
+              a("span", ea, g(c.value.summary.thinkingLevel), 1)
+            ], 8, ta)
           ]),
-          a("div", ea, [
+          a("div", sa, [
             a("span", {
               class: "omp-hud__chip",
-              title: `${d.value.summary.totalTokens.toLocaleString()} context tokens`
+              title: `${c.value.summary.totalTokens.toLocaleString()} context tokens`
             }, [
-              k(S, {
+              k(M, {
                 name: "layers",
                 size: 12
               }),
-              a("span", na, g(H.value), 1)
-            ], 8, sa),
+              a("span", aa, g(H.value), 1)
+            ], 8, na),
             a("span", {
               class: "omp-hud__chip is-cost",
-              title: `Session cost ${d.value.summary.totalCost.toFixed(4)} USD`
+              title: `Session cost ${c.value.summary.totalCost.toFixed(4)} USD`
             }, [
-              k(S, {
+              k(M, {
                 name: "activity",
                 size: 12
               }),
-              a("span", oa, g(d.value.summary.totalCost.toFixed(2)) + " USD", 1)
-            ], 8, aa)
+              a("span", ia, g(c.value.summary.totalCost.toFixed(2)) + " USD", 1)
+            ], 8, oa)
           ]),
-          a("p", ia, [
+          a("p", ra, [
             a("span", {
               class: A(["omp-hud__status-dot", Y.value])
             }, null, 2),
             G(" " + g(N.value) + " ", 1),
-            a("span", la, g(d.value.summary.turns) + " turns", 1)
+            a("span", la, g(c.value.summary.turns) + " turns", 1)
           ]),
-          a("div", ra, [
+          a("div", ca, [
             a("button", {
               type: "button",
               class: "omp-hud__action",
               title: "Open the session explorer",
-              onClick: kt
+              onClick: St
             }, [
-              k(S, {
+              k(M, {
                 name: "history",
                 size: 14
               }),
@@ -1825,35 +1843,35 @@ ${u.text}
               title: i.value ? "Enter tmux copy-mode to scroll history" : "tmux was not found on this host",
               onClick: dt
             }, [
-              k(S, {
+              k(M, {
                 name: "terminal",
                 size: 14
               }),
               _[8] || (_[8] = a("span", null, "Scroll", -1))
-            ], 8, ca),
+            ], 8, ua),
             a("button", {
               type: "button",
               class: "omp-hud__action",
               title: "Open a split pane running OMP",
-              onClick: St
+              onClick: Ct
             }, [
-              k(S, {
+              k(M, {
                 name: "split-vertical",
                 size: 14
               }),
               _[9] || (_[9] = a("span", null, "Split", -1))
             ])
           ])
-        ], 64)) : d.value.state === "starting" || !h.value ? (f(), v("div", ua, [
+        ], 64)) : c.value.state === "starting" || !h.value ? (f(), v("div", da, [
           _[10] || (_[10] = a("span", {
             class: "omp-hud__spinner",
             "aria-hidden": "true"
           }, null, -1)),
-          a("p", da, g(h.value ? "Starting OMP" : "Reading session"), 1),
-          a("p", pa, "Waiting for the first turn in " + g(ct.value), 1)
+          a("p", pa, g(h.value ? "Starting OMP" : "Reading session"), 1),
+          a("p", ma, "Waiting for the first turn in " + g(ct.value), 1)
         ])) : (f(), v(E, { key: 2 }, [
-          a("div", ma, [
-            k(S, {
+          a("div", ha, [
+            k(M, {
               name: "info",
               size: 18,
               class: "omp-hud__placeholder-icon"
@@ -1861,24 +1879,24 @@ ${u.text}
             _[11] || (_[11] = a("p", { class: "omp-hud__placeholder-title" }, "No OMP session here", -1)),
             _[12] || (_[12] = a("p", { class: "omp-hud__placeholder-note" }, "Pick a profile and start one in this pane.", -1))
           ]),
-          a("div", ha, [
+          a("div", fa, [
             _[13] || (_[13] = a("label", {
               class: "omp-hud__label",
               for: "omp-hud-preset"
             }, "Profile", -1)),
-            Z(a("select", {
+            X(a("select", {
               id: "omp-hud-preset",
-              "onUpdate:modelValue": _[5] || (_[5] = (B) => c.value = B),
+              "onUpdate:modelValue": _[5] || (_[5] = (B) => u.value = B),
               class: "omp-hud__select",
               disabled: o.value,
-              onChange: et
+              onChange: st
             }, [
-              (f(!0), v(E, null, D(l.value, (B) => (f(), v("option", {
+              (f(!0), v(E, null, D(r.value, (B) => (f(), v("option", {
                 key: B.id,
                 value: B.id
-              }, g(B.label), 9, ga))), 128))
-            ], 40, fa), [
-              [ce, c.value]
+              }, g(B.label), 9, va))), 128))
+            ], 40, ga), [
+              [ue, u.value]
             ]),
             a("button", {
               type: "button",
@@ -1887,12 +1905,12 @@ ${u.text}
               title: "Run OMP in the active pane",
               onClick: pt
             }, [
-              k(S, {
+              k(M, {
                 name: "play",
                 size: 12
               }),
               a("span", null, g(n.value ? "Starting" : "Launch"), 1)
-            ], 8, va)
+            ], 8, ya)
           ])
         ], 64))
       ], 512), [
@@ -1900,9 +1918,9 @@ ${u.text}
       ])
     ], 2));
   }
-}), wa = /* @__PURE__ */ Wt(_a, [["__scopeId", "data-v-29405565"]]);
-function ba(t) {
-  const e = me(t, {});
+}), ba = /* @__PURE__ */ Yt(wa, [["__scopeId", "data-v-29405565"]]);
+function ka(t) {
+  const e = he(t, {});
   return {
     series: {
       id: "dinotty-omp:session",
@@ -1911,11 +1929,11 @@ function ba(t) {
       statusIcon: "Bot",
       defaultVisible: !0,
       current: () => {
-        const n = xt().summary;
+        const n = It().summary;
         return n ? n.totalCost : null;
       },
       statusText: () => {
-        const n = xt();
+        const n = It();
         if (n.state === "inactive") return null;
         const o = n.summary;
         if (n.state === "starting" || !o) return "OMP: starting";
@@ -1923,7 +1941,7 @@ function ba(t) {
         return `OMP ${i.length > 16 ? `${i.slice(0, 15)}...` : i} ${o.totalCost.toFixed(2)} USD`;
       },
       detail: () => {
-        const n = xt();
+        const n = It();
         if (n.state === "inactive")
           return [{ label: "State", value: "No OMP session in this tab" }];
         const o = n.summary;
@@ -1947,18 +1965,18 @@ function ba(t) {
     }
   };
 }
-const ka = 244, mt = 12, Sa = 560;
-function Ma() {
+const Ma = 244, mt = 12, Sa = 560;
+function Ca() {
   return typeof window > "u" || typeof window.innerWidth != "number" ? 1280 : Number.isFinite(window.innerWidth) && window.innerWidth > 0 ? window.innerWidth : 1280;
 }
-function Ca() {
-  const t = Ma();
-  return t < Sa ? { x: mt, y: mt } : { x: Math.max(mt, t - ka - mt), y: mt };
+function $a() {
+  const t = Ca();
+  return t < Sa ? { x: mt, y: mt } : { x: Math.max(mt, t - Ma - mt), y: mt };
 }
-const ve = "dinotty:overlay-pos:dinotty-omp:dinotty-omp:hud", oe = "dinotty-omp:overlay-pos-migrated:v1", $a = 44, Ta = 120, ie = 244, le = 12;
-function xa() {
+const ye = "dinotty:overlay-pos:dinotty-omp:dinotty-omp:hud", ie = "dinotty-omp:overlay-pos-migrated:v1", Ta = 44, xa = 120, re = 244, le = 12;
+function Pa() {
   try {
-    const t = localStorage.getItem(ve);
+    const t = localStorage.getItem(ye);
     if (!t) return null;
     const e = JSON.parse(t);
     return typeof e?.x != "number" || typeof e?.y != "number" || !Number.isFinite(e.x) || !Number.isFinite(e.y) ? null : { x: e.x, y: e.y };
@@ -1967,87 +1985,87 @@ function xa() {
   }
 }
 function Ia(t, e, s) {
-  return t.x < 0 || t.y < 0 || t.x > e || t.y > s ? !0 : t.y >= $a ? !1 : t.x >= e - ie - le && t.x <= e - ie + le || t.x > e - Ta;
+  return t.x < 0 || t.y < 0 || t.x > e || t.y > s ? !0 : t.y >= Ta ? !1 : t.x >= e - re - le && t.x <= e - re + le || t.x > e - xa;
 }
-function Pa(t) {
+function Ea(t) {
   if (typeof window > "u") return;
   const e = window.innerWidth, s = window.innerHeight;
   if (!Number.isFinite(e) || !Number.isFinite(s) || e <= 0 || s <= 0 || e >= 560) return;
   try {
-    if (localStorage.getItem(oe)) return;
+    if (localStorage.getItem(ie)) return;
   } catch {
     return;
   }
-  const n = xa();
+  const n = Pa();
   if (!(!n || !Ia(n, e, s)))
     try {
-      localStorage.setItem(ve, JSON.stringify(t)), localStorage.setItem(oe, "1");
+      localStorage.setItem(ye, JSON.stringify(t)), localStorage.setItem(ie, "1");
     } catch {
     }
 }
-let bt = [];
+let Mt = [];
 function ht(t) {
-  bt.push(() => t.dispose());
+  Mt.push(() => t.dispose());
 }
-function za(t) {
-  bt = [], ht(
+function Aa(t) {
+  Mt = [], ht(
     t.commands.register("omp.open-session-viewer", () => {
       t.open();
     })
   ), ht(
     t.commands.register("omp.tmux-copymode", () => {
-      ge(t);
+      ve(t);
     })
   ), ht(
     t.commands.registerQuickPick("omp.quick-launch", {
       title: "OMP: launch a profile in a new tab",
-      items: async () => se(t, await Lt(t), "new-tab")
+      items: async () => ne(t, await At(t), "new-tab")
     })
   ), ht(
     t.commands.registerQuickPick("omp.split-launch", {
       title: "OMP: launch a profile in a split pane",
-      items: async () => se(t, await Lt(t), "split-v")
+      items: async () => ne(t, await At(t), "split-v")
     })
   ), ht(
     t.commands.registerQuickPick("omp.skill-palette", {
       title: "OMP: search skills and inject one",
-      items: async () => (await Vt(t)).map((o) => ({
+      items: async () => (await jt(t)).map((o) => ({
         label: o.name,
         detail: o.description,
         icon: "book",
         action: () => {
-          he(t, o.name);
+          fe(t, o.name);
         }
       }))
     })
   );
-  const e = ba(t);
-  bt.push(() => e.dispose());
-  const s = Ca();
-  return Pa(s), {
-    component: Vn,
+  const e = ka(t);
+  Mt.push(() => e.dispose());
+  const s = $a();
+  return Ea(s), {
+    component: jn,
     overlay: [
       {
         id: "dinotty-omp:hud",
-        component: wa,
+        component: ba,
         dragHandle: "grip",
         interactive: !0,
         defaultPosition: s
       }
     ],
     monitor: { series: [e.series] },
-    dispose: Ea
+    dispose: La
   };
 }
-function Ea() {
-  for (const t of bt)
+function La() {
+  for (const t of Mt)
     try {
       t();
     } catch {
     }
-  bt = [], ss(), ls(), gs(), cs();
+  Mt = [], ns(), ls(), vs(), us();
 }
 export {
-  za as activate,
-  Ea as deactivate
+  Aa as activate,
+  La as deactivate
 };
