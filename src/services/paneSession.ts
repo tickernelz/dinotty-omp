@@ -41,7 +41,6 @@ let inFlightPaneId = '';
 let dirty = false;
 let forcePending = false;
 let trailingTimer: ReturnType<typeof setTimeout> | null = null;
-let retryUntil = 0;
 let lastRefreshAt = -Infinity;
 let lastSignature = '';
 
@@ -105,9 +104,7 @@ function scheduleNext(): void {
     ? STARTING_SAFETY_MS
     : current.sessionFile
       ? SETTLED_SAFETY_MS
-      : retryUntil > now
-        ? 1_000
-        : 0;
+      : 0;
   if (!dirty && safety === 0) return;
   const delay = dirty
     ? forcePending ? 0 : Math.max(0, lastRefreshAt + MIN_REFRESH_GAP_MS - now)
@@ -163,7 +160,6 @@ function switchPane(paneId: string): void {
   if (!ctx || subscriptions.size === 0 || paneId === currentPaneId) return;
   generation += 1;
   currentPaneId = paneId;
-  retryUntil = Date.now() + 6_000;
   current = {
     ...EMPTY_PANE_SESSION,
     cwd: ctx.terminal.activeCwd() || '',
@@ -220,12 +216,8 @@ export function refreshPaneSession(force = false): Promise<void> {
       return;
     }
     lastRefreshAt = Date.now();
-    const display = next.state === 'inactive' && Date.now() < retryUntil
-      ? { ...next, cwd: next.cwd || request.cwd, isRunning: true, state: 'starting' as const, summary: null }
-      : next;
-    if (display.state !== 'inactive') retryUntil = 0;
-    const signature = signatureOf(display);
-    current = display;
+    const signature = signatureOf(next);
+    current = next;
     ensureWatch();
     if (signature !== lastSignature) {
       lastSignature = signature;
@@ -263,7 +255,6 @@ function stopRuntime(): void {
   inFlightPaneId = '';
   dirty = false;
   forcePending = false;
-  retryUntil = 0;
   current = EMPTY_PANE_SESSION;
   currentPaneId = '';
   lastSignature = '';
