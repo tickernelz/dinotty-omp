@@ -159,11 +159,12 @@ test('clears the old pane and rejects a late response after switching panes', as
   paneSession.subscribePaneSession(fake.ctx, { listener: (value) => snapshots.push(value) });
   assert.equal(fake.calls.length, 1);
   fake.switchPane('B', '/b');
-  assert.equal(paneSession.peekPaneSession().cwd, '');
+  assert.equal(paneSession.peekPaneSession().cwd, '/b');
+  assert.equal(paneSession.peekPaneSession().state, 'starting');
   assert.equal(fake.calls.length, 2);
   fake.resolve('A', session('/a', 1));
   await flush();
-  assert.equal(paneSession.peekPaneSession().cwd, '');
+  assert.equal(paneSession.peekPaneSession().cwd, '/b');
   fake.resolve('B', session('/b', 2));
   await flush();
   assert.equal(paneSession.peekPaneSession().cwd, '/b');

@@ -43,6 +43,7 @@ let forcePending = false;
 let trailingTimer: ReturnType<typeof setTimeout> | null = null;
 let lastRefreshAt = -Infinity;
 let lastSignature = '';
+
 function signatureOf(session: PaneSession): string {
   const summary = session.summary;
   return [
@@ -155,7 +156,12 @@ function switchPane(paneId: string): void {
   if (!ctxRef || subscriptions.size === 0 || paneId === currentPaneId) return;
   generation += 1;
   currentPaneId = paneId;
-  current = EMPTY_PANE_SESSION;
+  current = {
+    ...EMPTY_PANE_SESSION,
+    cwd: ctxRef.terminal.activeCwd() || '',
+    isRunning: true,
+    state: 'starting'
+  };
   lastSignature = signatureOf(current);
   lastRefreshAt = -Infinity;
   disposeWatch();
