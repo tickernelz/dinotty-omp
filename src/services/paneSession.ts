@@ -9,10 +9,11 @@ export const EMPTY_PANE_SESSION: PaneSession = {
   summary: null
 };
 
+const PANE_CHECK_MS = 250;
 const SETTLED_SAFETY_MS = 30_000;
+const ACTIVE_SAFETY_MS = 2_500;
 const STARTING_SAFETY_MS = 3_000;
 const MIN_REFRESH_GAP_MS = 600;
-
 export interface PaneSessionSubscriber {
   listener?: (session: PaneSession) => void;
   visible?: () => boolean;
@@ -29,6 +30,7 @@ let ctxRef: PluginContext | null = null;
 let current: PaneSession = EMPTY_PANE_SESSION;
 let currentPaneId = '';
 let timer: ReturnType<typeof setTimeout> | null = null;
+let paneCheckTimer: number | null = null;
 let paneListener: Disposable | null = null;
 let visibilityListener: (() => void) | null = null;
 let watchListener: Disposable | null = null;
@@ -90,6 +92,24 @@ function clearTrailingTimer(): void {
   trailingTimer = null;
 }
 
+function clearPaneCheck(): void {
+  if (paneCheckTimer === null) return;
+  clearTimeout(paneCheckTimer);
+  paneCheckTimer = null;
+}
+
+function schedulePaneCheck(): void {
+  clearPaneCheck();
+  if (!ctxRef || subscriptions.size === 0) return;
+  paneCheckTimer = setTimeout(() => {
+    paneCheckTimer = null;
+    if (ctxRef && subscriptions.size > 0 && isVisible()) {
+      const paneId = ctxRef.terminal.activePaneId() || '';
+      if (paneId !== currentPaneId) switchPane(paneId);
+    }
+    schedulePaneCheck();
+  }, PANE_CHECK_MS) as unknown as number;
+}
 function disposeWatch(): void {
   watchEpoch += 1;
   watchListener?.dispose();
@@ -100,11 +120,14 @@ function scheduleNext(): void {
   clearTimer();
   if (!ctxRef || subscriptions.size === 0 || inFlight) return;
   const now = Date.now();
+  const status = current.summary?.status;
   const safety = current.state === 'starting'
     ? STARTING_SAFETY_MS
-    : current.sessionFile
-      ? SETTLED_SAFETY_MS
-      : 0;
+    : status === 'thinking' || status === 'running_tool'
+      ? ACTIVE_SAFETY_MS
+      : current.sessionFile
+        ? SETTLED_SAFETY_MS
+        : 0;
   if (!dirty && safety === 0) return;
   const delay = dirty
     ? forcePending ? 0 : Math.max(0, lastRefreshAt + MIN_REFRESH_GAP_MS - now)
@@ -242,6 +265,7 @@ function stopRuntime(): void {
   generation += 1;
   clearTimer();
   clearTrailingTimer();
+  clearPaneCheck();
   paneListener?.dispose();
   paneListener = null;
   disposeWatch();
@@ -281,9 +305,9 @@ export function subscribePaneSession(
     };
     document.addEventListener('visibilitychange', visibilityListener);
   }
+  schedulePaneCheck();
   subscriber.listener?.(current);
   void refreshPaneSession(true);
-
   return {
     dispose() {
       if (subscription.disposed) return;
