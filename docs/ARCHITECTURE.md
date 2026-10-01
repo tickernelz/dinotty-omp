@@ -22,7 +22,7 @@ Dinotty renderer (browser)                      host process
 
 `src/main.ts` exports `activate(ctx)` and returns the plugin's contributions:
 
-- `component` -- `MainView.vue`, the Sessions, Skills and Profiles tab.
+- `component` -- `MainView.vue`, the Sessions, Skills and Model presets tab.
 - `overlay` -- one interactive `MiniHudOverlay.vue` with a mobile-safe default position.
 - `monitor.series` -- one `dinotty-omp:session` cost series backed by the shared pane-session store.
 - Commands: `omp.open-session-viewer`, `omp.tmux-copymode`, `omp.quick-launch`, `omp.split-launch` and `omp.skill-palette`.
@@ -38,8 +38,8 @@ The services under `src/services` hold the logic:
 | `sessionResolver.ts` | Resolves the active pane and lists transcript files. |
 | `sessionLoader.ts` / `sessionParser.ts` | Reads bridge chunks, keeps exact bridge totals, parses bounded turn windows and supports earlier-history paging. |
 | `statusMonitor.ts` | Exposes the shared snapshot as the status series. |
-| `tmuxLauncher.ts` | Builds launch argv, derives tmux names and sends copy-mode keys. |
-| `presetService.ts` | Scans profile configs and builds quick-pick items. |
+| `tmuxLauncher.ts` | Starts OMP normally, waits for a running pane, then sends `/modelpreset switch <name>`. |
+| `presetService.ts` | Reads global OMP `modelPresets` through the bridge and builds quick-pick items. |
 | `skillService.ts` | Scans, classifies and injects skills. |
 
 Nothing in the browser decides the platform for itself. The launcher wraps `omp` in tmux when `doctor` reports tmux present and the platform is not Windows, and launches `omp` directly otherwise; the copy-mode toggle refuses with a notification instead of sending keys into a shell that has no tmux.
@@ -58,7 +58,7 @@ So the split is: the browser owns rendering and anything cheap, the bridge owns 
 
 ## Bridge contract
 
-The helper takes an action as its first argument, writes exactly one JSON document to stdout, and exits. Exit code is 0 for every known action and 1 for an unknown one, which emits `{"error":"unknown action: <name>"}`.
+The helper takes an action as its first argument, writes exactly one JSON document to stdout, and exits. Successful known actions return 0; unknown actions and unavailable required resources return 1 with an error object.
 
 | Invocation | Meaning |
 | --- | --- |
@@ -66,6 +66,7 @@ The helper takes an action as its first argument, writes exactly one JSON docume
 | `active` | The same code path with no pane id; resolution falls through to the hint and the fallbacks below. |
 | `chunk <sessionFile> <offset> <maxBytes>` | Return a newline-aligned, byte-addressed transcript window with session metadata. The window extends through a complete record and can exceed `maxBytes` for one large JSONL record. |
 | `file-metrics <sessionFile>` | Return exact aggregate model, token, cost, turn and status metrics using the whole-file incremental cache. |
+| `model-presets` | Return sanitized global OMP `modelPresets` entries from `omp config get modelPresets --json`. |
 | `tmux-panes` | List every tmux pane on the machine. |
 | `doctor` | Report the host environment. |
 
@@ -142,11 +143,11 @@ The browser side implements the same encoding so the Explorer can list a workspa
 
 ## Incremental metering
 
-Re-reading a multi-megabyte transcript every two seconds would be wasteful, so the helper reads each file once and then only reads what was appended.
+The HUD and status bar do not use a fixed duplicate interval. One shared pane store refreshes on active-pane changes, leaf session-directory watch events, and bounded safety timers. The bridge still reads only appended bytes for aggregate metrics.
 
-It keeps a cache in the system temporary directory, `dinotty-omp-metrics.json`, written with mode `0600` and capped at 24 entries evicted by last use. Each entry stores the running totals plus the byte offset already consumed and the file's mtime. On the next call the helper seeks to that offset, reads only the new bytes, and advances the offset to the last complete line -- a partial trailing line is left for the next call rather than parsed half-written. If the file shrank or the cached entry is gone, the totals reset and the file is read from the start.
+It keeps per-session cache files in the system temporary directory, written with mode `0600` and capped at 24 entries evicted by last use. Each entry stores running totals plus the byte offset already consumed and the file's mtime. On the next call the helper seeks to that offset, reads only new bytes, and advances the offset to the last complete line. If the file shrank or the cache entry is gone, totals reset and the file is read from the start.
 
-This is why the HUD stays responsive on a transcript the renderer would refuse to load whole, and why the numbers it reports are complete while the Explorer's badges on a very large transcript are a lower bound.
+The Explorer reads newest transcript chunks through the bridge's `chunk` action and obtains exact whole-file badges through `file-metrics`; if exact metrics are unavailable, it labels loaded-window totals as nonexact.
 
 ## Transcript format
 

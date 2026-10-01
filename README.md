@@ -1,6 +1,6 @@
 # OMP Pilot
 
-A Dinotty plugin that makes the Oh My Pi (`omp`) coding agent a first-class citizen of the Dinotty terminal: a live per-tab HUD, a managed tmux launcher, a visual session and trace explorer, a skill matrix, and a profile switcher.
+A Dinotty plugin that makes the Oh My Pi (`omp`) coding agent a first-class citizen of the Dinotty terminal: a live per-tab HUD, a managed tmux launcher, a visual session and trace explorer, a skill matrix, and a model preset switcher.
 
 ![CI](https://github.com/tickernelz/dinotty-omp/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -20,7 +20,7 @@ A Dinotty plugin that makes the Oh My Pi (`omp`) coding agent a first-class citi
 | Tmux copy-mode toggle | Sends the tmux prefix followed by `[` to the active pane, dropping straight into copy-mode so you can scroll back and select text with the keyboard. Disabled, with an explanation, when the host has no tmux. |
 | Session and Trace Explorer | A plugin tab that lists OMP session transcripts for one workspace or all of them, renders each turn as a card, collapses thinking blocks and tool calls, shows tool arguments and results, and renders images inline with a click-to-zoom lightbox. |
 | Skill Matrix | Indexes every `SKILL.md` under the OMP managed-skills, project-skills and user-skills directories, offers search plus category filters, previews the skill body, and injects `/skill <name>` into the active terminal on one click. |
-| Preset switcher | Discovers every `config.*.yml` profile in the OMP agent directory and launches any of them in a new tab, a vertical split, or a horizontal split. |
+| Model preset switcher | Reads global OMP `modelPresets` through the bridge and starts OMP normally, then applies `/modelpreset switch <name>` after the session is ready. |
 
 ---
 
@@ -34,7 +34,7 @@ Wrapping `omp` in tmux moves the problem to a layer that solves it. tmux keeps i
 
 **2. You cannot see what a tab is doing or what it is costing.**
 
-With several tabs open, each potentially running a different profile against a different model, there is no way to tell them apart without attaching to each one and squinting at the TUI. The HUD and the status bar metric answer "which model, which profile, how much context, how much money, busy or idle" per tab, continuously, without stealing focus.
+With several tabs open, each potentially running a different model preset against a different model, there is no way to tell them apart without attaching to each one and squinting at the TUI. The HUD and the status bar metric answer "which model, which preset, how much context, how much money, busy or idle" per tab, continuously, without stealing focus.
 
 ---
 
@@ -149,19 +149,19 @@ The beacon next to the `OMP` wordmark reports what the tab is doing:
 | Amber, pulsing | Running tool | One or more tool calls are in flight. |
 | Red | Error | The session reported an error state. |
 
-When the tab has no session, the HUD offers a profile dropdown and a **Launch** button that runs `omp` in the active pane with the chosen profile.
+When the tab has no session, the HUD offers a model preset dropdown and a **Launch** button that starts OMP and applies the selected preset after startup.
 
 ### Command palette
 
 | Command id | Title |
 | --- | --- |
-| `omp.quick-launch` | OMP: launch a profile in a new tab |
-| `omp.split-launch` | OMP: launch a profile in a split pane |
+| `omp.quick-launch` | OMP: launch a model preset in a new tab |
+| `omp.split-launch` | OMP: launch a model preset in a split pane |
 | `omp.skill-palette` | OMP: search skills and inject one |
 | `omp.open-session-viewer` | OMP: open the session explorer |
 | `omp.tmux-copymode` | OMP: toggle tmux copy-mode |
 
-The first three open a quick-pick list: profiles for the two launch commands, skills for the palette.
+The first three open a quick-pick list: model presets for the two launch commands, skills for the palette.
 
 ### Session and Trace Explorer
 
@@ -179,9 +179,9 @@ The **Sessions** tab lists transcripts newest first, with a filter box and a **T
 
 The **Skills** tab indexes `SKILL.md` files from three roots -- managed skills and project skills inside the OMP agent directory, and your personal `~/.agents/skills` -- reading the name and description from each file's frontmatter. Skills are classified into `verification`, `diagnostics`, `delivery`, `authoring` and `general`, selectable as filter pills alongside `all`, and searchable by name or description. Selecting a card previews the full skill body; **Inject** sends `/skill <name>` to the active terminal. The index is cached for 60 seconds.
 
-### Preset switcher
+### Model preset switcher
 
-The **Profiles** tab lists the default profile plus every discovered one, each with its config path and three launch buttons: **New tab**, **Split right** and **Split down**. Launching a non-default profile starts `omp --config=<path to that profile>`. The header also carries a **New OMP tab** button for launching the profile selected there.
+The **Model presets** tab lists the global `modelPresets` entries, their role count, and their default thinking level. Launch actions start OMP normally and apply `/modelpreset switch <name>` once the bridge observes the new session running. OMP 18.4.5 has no `--modelpreset` launch flag.
 
 ---
 
@@ -210,9 +210,9 @@ It engages only inside Dinotty and only when you are not already inside tmux; ev
 
 ## Configuration
 
-The plugin has no settings file. It asks the bridge where OMP lives, which is `$PI_CODING_AGENT_DIR` when that is set and `~/.omp/agent` otherwise, and scans that directory for files named `config.<name>.yml` or `config.<name>.yaml`. `config.yml` is always offered as the default profile. Add a profile by dropping a new config file there -- nothing needs to be registered.
+The plugin has no settings file. It asks the bridge for the global OMP `modelPresets` record. Presets contain only `modelRoles` and `defaultThinkingLevel`; providers, tools, compaction, memory and credentials remain in the base `config.yml` and OMP global configuration.
 
-The profile selected in the HUD dropdown is remembered in browser local storage under the key `dinotty-omp.preset`, so a tab reload keeps your last choice.
+The selected model preset is remembered in browser local storage under `dinotty-omp.preset`, so a tab reload keeps your last choice.
 
 ---
 

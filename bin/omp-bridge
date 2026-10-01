@@ -22,6 +22,22 @@ function ompRunHome() {
   return path.join(HOME, '.omp', 'run', 'daemons');
 }
 
+function ompCli() {
+  const names = IS_WINDOWS ? ['omp.exe', 'omp.cmd'] : ['omp'];
+  const candidates = [];
+  if (process.env.OMP_BIN) candidates.push(process.env.OMP_BIN);
+  if (IS_WINDOWS) {
+    candidates.push(path.join(HOME, 'AppData', 'Roaming', 'npm', 'omp.cmd'));
+  } else {
+    candidates.push(path.join(HOME, '.bun', 'bin', 'omp'));
+    candidates.push(path.join(HOME, '.local', 'bin', 'omp'));
+  }
+  for (const name of names) candidates.push(name);
+  for (const candidate of candidates) {
+    if (!path.isAbsolute(candidate) || fs.existsSync(candidate)) return candidate;
+  }
+  return '';
+}
 function run(file, args, timeout = 2000) {
   try {
     return execFileSync(file, args, {
@@ -645,6 +661,33 @@ function readChunk(sessionFile, requestedStart, maxBytes) {
   }
 }
 
+function listModelPresets() {
+  const executable = ompCli();
+  if (!executable) return null;
+  const raw = run(executable, ['config', 'get', 'modelPresets', '--json'], 3000);
+  if (!raw) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  const values = parsed?.value;
+  if (!values || typeof values !== 'object' || Array.isArray(values)) return null;
+  const presets = [];
+  for (const [id, value] of Object.entries(values)) {
+    if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(id)) continue;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+    if (!value.modelRoles || typeof value.modelRoles !== 'object' || Array.isArray(value.modelRoles)) continue;
+    presets.push({
+      id,
+      modelRoles: value.modelRoles,
+      defaultThinkingLevel: typeof value.defaultThinkingLevel === 'string' ? value.defaultThinkingLevel : 'auto'
+    });
+  }
+  return presets.sort((a, b) => a.id.localeCompare(b.id));
+}
+
 function emit(value) {
   process.stdout.write(JSON.stringify(value) + '\n');
 }
@@ -684,6 +727,16 @@ function main() {
       return 1;
     }
     emit(summary);
+    return 0;
+  }
+
+  if (action === 'model-presets') {
+    const presets = listModelPresets();
+    if (!presets) {
+      emit({ error: 'model presets unavailable' });
+      return 1;
+    }
+    emit(presets);
     return 0;
   }
 

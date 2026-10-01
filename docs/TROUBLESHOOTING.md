@@ -124,20 +124,20 @@ Measured on Dinotty 0.28.0: writes to `<checkout>/.omp/fabric/mesh/state.json` a
 
 **Cause.** Several different things produce this symptom.
 
-- **Stale by design.** The HUD polls every 2 seconds and the status bar every 2.5 seconds. A reading a few seconds old is normal.
-- **Another session in the same workspace.** Two agents working in one directory both write transcripts there. The helper prefers the file the matched process actually has open, so this is rare, but with several live clients in one workspace the newest open file wins.
-- **Explorer badges are lower bounds on a large transcript.** The Explorer reads transcripts through the host filesystem API, which truncates large files, and tokens and cost live at the end of the file. The Explorer says so with a banner when it happens. The HUD and status bar do not have this problem; they take their numbers from the bridge.
-- **A corrupted metric cache.** The helper stores running totals and a byte offset per transcript in the system temporary directory. If those totals ever look impossible, the cache is the thing to suspect.
+- **Stale by design.** The shared pane store refreshes on pane changes, session-file events, and bounded safety timers. A short bridge delay is normal; a long inactive state is not.
+- **Another session in the same workspace.** Two agents working in one directory both write transcripts there. The helper prefers the file the matched process actually has open.
+- **Explorer loaded-window totals.** The Explorer starts at the newest transcript chunk. Whole-file model, token, cost and turn badges come from `file-metrics`; if that action is unavailable, the UI labels the loaded-window totals as nonexact.
+- **A corrupted metric cache.** The helper stores running totals and a byte offset per transcript in per-session files under the system temporary directory. If those totals ever look impossible, the cache is the thing to suspect.
 
 **Fix.**
 
 1. Compare the HUD against `node ./bin/omp-bridge active`. If the bridge is right and the HUD is not, reload the tab.
-2. Treat token and cost badges inside the Explorer as a floor on a very large transcript. The HUD is authoritative.
-3. Reset the incremental metrics cache and let it rebuild from scratch:
+2. If the Explorer shows `loaded`, use the **Load earlier** action or restore bridge access; those totals are explicitly not whole-file totals.
+3. Reset the per-session incremental metrics cache and let it rebuild from scratch:
    ```sh
-   rm -f "${TMPDIR:-/tmp}/dinotty-omp-metrics.json"
+   rm -rf "${TMPDIR:-/tmp}/dinotty-omp-metrics"
    ```
-   On Windows, delete `dinotty-omp-metrics.json` from `%TEMP%`. The next poll re-reads the transcripts in full.
+   On Windows, delete the `dinotty-omp-metrics` directory from `%TEMP%`. The next refresh rebuilds the transcript cache.
 4. Run one agent per workspace directory if you need the HUD to track a specific session.
 
 ---
@@ -199,25 +199,36 @@ Measured on Dinotty 0.28.0: writes to `<checkout>/.omp/fabric/mesh/state.json` a
 
 **Fix.**
 
-Run Dinotty against WSL and work inside the Linux filesystem; everything behaves as it does on Linux. On native Windows, the Explorer, Skill Matrix and profile tabs work fully, and the HUD is accurate while you are actively using the agent.
+- On native Windows, the Explorer, Skill Matrix and Model presets tabs work fully, and the HUD is accurate while you are actively using the agent.
 
 ---
 
-## Skills or profiles do not show up
+## Model presets do not show up
 
-**Cause.** Both scanners swallow read errors and return what they found, so a missing or unreadable directory produces an empty list rather than an error.
+**Cause.** The plugin reads the global OMP `modelPresets` record through `omp-bridge`; it no longer scans `config.*.yml` files. Empty or unreadable global configuration produces an empty preset list.
 
 **Fix.**
 
-1. Confirm where the plugin is looking:
+1. Confirm the bridge sees the OMP installation:
    ```sh
    node ./bin/omp-bridge doctor
    ```
-   `ompHome` is the directory both scanners use. If it is wrong, set `PI_CODING_AGENT_DIR` and restart Dinotty.
-2. Confirm the directories exist. Skills are read from `managed-skills` and `skills` inside that directory, plus `~/.agents/skills`:
+2. Confirm OMP exposes saved presets:
+   ```sh
+   omp config get modelPresets --json
+   ```
+3. Save or switch presets in OMP with `/modelpreset save <name>` and `/modelpreset switch <name>`. The launcher applies a selected preset after the new OMP session reaches `running`.
+4. Restart or reload Dinotty after changing the global preset store. The preset index is fetched when the plugin view mounts.
+
+## Skills do not show up
+
+**Cause.** The skill scanner swallows read errors and returns what it found, so a missing or unreadable directory produces an empty list rather than an error.
+
+**Fix.**
+
+1. Confirm the directories exist. Skills are read from `managed-skills` and `skills` inside `ompHome`, plus `~/.agents/skills`:
    ```sh
    ls ~/.omp/agent/managed-skills ~/.omp/agent/skills ~/.agents/skills
    ```
-3. A skill is indexed only if its directory contains `SKILL.md`; a directory without one is skipped.
-4. A profile is discovered only if its filename matches `config.<name>.yml` or `config.<name>.yaml` directly inside the agent directory. Nested directories are not scanned.
-5. The skill index is cached for 60 seconds. Switch tabs and come back, or reload, after adding one.
+2. A skill is indexed only if its directory contains `SKILL.md`; a directory without one is skipped.
+3. The skill index is cached for 60 seconds. Switch tabs and come back, or reload, after adding one.

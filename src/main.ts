@@ -34,14 +34,14 @@ export function activate(ctx: PluginContext): PluginExports {
 
   track(
     ctx.commands.registerQuickPick('omp.quick-launch', {
-      title: 'OMP: launch a profile in a new tab',
+      title: 'OMP: launch a model preset in a new tab',
       items: async () => buildPresetQuickPickItems(ctx, await discoverPresets(ctx), 'new-tab')
     })
   );
 
   track(
     ctx.commands.registerQuickPick('omp.split-launch', {
-      title: 'OMP: launch a profile in a split pane',
+      title: 'OMP: launch a model preset in a split pane',
       items: async () => buildPresetQuickPickItems(ctx, await discoverPresets(ctx), 'split-v')
     })
   );

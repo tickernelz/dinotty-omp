@@ -25,7 +25,7 @@
       </nav>
 
       <div class="omp-app__bar-actions">
-        <select v-model="launchPresetId" class="omp-field omp-field--compact" aria-label="Launch profile">
+        <select v-model="launchPresetId" class="omp-field omp-field--compact" aria-label="Launch model preset">
           <option v-for="preset in presets" :key="preset.id" :value="preset.id">
             {{ preset.label }}
           </option>
@@ -262,8 +262,8 @@
 
       <section v-if="activeTab === 'profiles'" class="omp-pane omp-pane--profiles">
         <header class="omp-profiles__head">
-          <h2>Profiles</h2>
-          <p>Discovered from the OMP agent directory. Launch one into a new tab or a split pane.</p>
+          <h2>Model presets</h2>
+          <p>Loaded from OMP global <code>modelPresets</code>. Apply one to a new tab or split pane.</p>
         </header>
 
         <div class="omp-profiles__grid">
@@ -272,7 +272,7 @@
               <span class="omp-profile__icon"><Icon name="zap" :size="16" /></span>
               <div>
                 <h3>{{ preset.label }}</h3>
-                <code>{{ preset.fileName }}</code>
+                <code>{{ Object.keys(preset.modelRoles).length }} model roles · thinking {{ preset.defaultThinkingLevel }}</code>
               </div>
             </header>
             <div class="omp-profile__actions">
@@ -352,7 +352,7 @@ const launchPresetId = ref(DEFAULT_PRESET_ID);
 const tabs = computed(() => [
   { id: 'sessions' as const, label: 'Sessions', icon: 'message-square' as IconName, badge: sessions.value.length },
   { id: 'skills' as const, label: 'Skills', icon: 'book' as IconName, badge: skills.value.length },
-  { id: 'profiles' as const, label: 'Profiles', icon: 'zap' as IconName, badge: presets.value.length }
+  { id: 'profiles' as const, label: 'Model presets', icon: 'zap' as IconName, badge: presets.value.length }
 ]);
 
 const filteredSessions = computed(() => {

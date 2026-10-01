@@ -91,19 +91,19 @@
       <template v-else>
         <div class="omp-hud__placeholder">
           <Icon name="info" :size="18" class="omp-hud__placeholder-icon" />
-          <p class="omp-hud__placeholder-title">No OMP session here</p>
-          <p class="omp-hud__placeholder-note">Pick a profile and start one in this pane.</p>
-        </div>
+        <p class="omp-hud__placeholder-title">No OMP session here</p>
+        <p class="omp-hud__placeholder-note">Pick a model preset and start one in this pane.</p>
+      </div>
 
-        <div class="omp-hud__launch">
-          <label class="omp-hud__label" for="omp-hud-preset">Profile</label>
-          <select
-            id="omp-hud-preset"
-            v-model="selectedPresetId"
-            class="omp-hud__select"
-            :disabled="presetsLoading"
-            @change="rememberPreset"
-          >
+      <div class="omp-hud__launch">
+        <label class="omp-hud__label" for="omp-hud-preset">Model preset</label>
+        <select
+          id="omp-hud-preset"
+          v-model="selectedPresetId"
+          class="omp-hud__select"
+          :disabled="presetsLoading"
+          @change="rememberPreset"
+        >
             <option v-for="preset in presets" :key="preset.id" :value="preset.id">
               {{ preset.label }}
             </option>

@@ -1,5 +1,6 @@
 import type { PluginContext } from '../types/dinotty';
 import { getHostInfo } from './hostInfo';
+import { readPaneSession } from './sessionResolver';
 import { DEFAULT_PRESET_ID, type PresetItem } from './presetService';
 
 export type LaunchTarget = 'new-tab' | 'split-h' | 'split-v';
@@ -10,6 +11,8 @@ export interface LaunchOmpOptions {
   cwd?: string;
 }
 
+const PRESET_READY_ATTEMPTS = 20;
+const PRESET_READY_DELAY_MS = 500;
 export function sanitizeSessionName(rawCwd: string, suffix?: string): string {
   if (!rawCwd) return suffix ? `omp-workspace-${suffix}` : 'omp-workspace';
   const trimmed = rawCwd.replace(/[\\/]+$/, '');
@@ -20,15 +23,44 @@ export function sanitizeSessionName(rawCwd: string, suffix?: string): string {
   return suffix ? `${base}-${suffix}` : base;
 }
 
-export function buildOmpArgs(preset?: PresetItem | null): string[] {
-  if (!preset || preset.isDefault || preset.id === DEFAULT_PRESET_ID) return [];
-  return [`--config=${preset.configPath}`];
+export function buildOmpArgs(_preset?: PresetItem | null): string[] {
+  return [];
+}
+
+export function buildPresetSwitchCommand(preset?: PresetItem | null): string {
+  if (!preset) return '';
+  return `/modelpreset switch ${preset.id}\n`;
 }
 
 function quoteForShell(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
+function schedulePresetSwitch(
+  ctx: PluginContext,
+  paneId: string,
+  cwd: string,
+  preset?: PresetItem | null
+): void {
+  if (!preset) return;
+  let attempts = 0;
+  const check = async (): Promise<void> => {
+    if (attempts >= PRESET_READY_ATTEMPTS) {
+      ctx.ui.notify(`OMP preset ${preset.id} was not applied before startup timeout`, 'warn');
+      return;
+    }
+    attempts += 1;
+    const pane = await readPaneSession(ctx, { paneId, cwd });
+    if (pane.state === 'running') {
+      const command = buildPresetSwitchCommand(preset);
+      if (command) ctx.terminal.send(paneId, command);
+      ctx.ui.notify(`OMP preset ${preset.id} applied`, 'info');
+      return;
+    }
+    window.setTimeout(() => void check(), PRESET_READY_DELAY_MS);
+  };
+  window.setTimeout(() => void check(), PRESET_READY_DELAY_MS);
+}
 export async function launchOmp(
   ctx: PluginContext,
   options: LaunchOmpOptions = {}
@@ -37,7 +69,7 @@ export async function launchOmp(
   const cwd = options.cwd || ctx.terminal.activeCwd() || host?.home || '.';
   const target = options.target || 'new-tab';
   const ompArgs = buildOmpArgs(options.preset);
-  const presetLabel = options.preset && !options.preset.isDefault ? options.preset.id : 'default';
+  const presetLabel = options.preset?.id || DEFAULT_PRESET_ID;
   const useTmux = Boolean(host?.tmux) && host?.platform !== 'win32';
 
   const directCommand = ['omp', ...ompArgs].map(quoteForShell).join(' ');
@@ -56,10 +88,11 @@ export async function launchOmp(
       title: `OMP: ${presetLabel}`
     });
 
+    schedulePresetSwitch(ctx, paneId, cwd, options.preset);
     ctx.ui.notify(
       useTmux
         ? `OMP started in tmux session ${sessionName}`
-        : `OMP started with profile ${presetLabel}`,
+        : `OMP started with preset ${presetLabel}`,
       'info'
     );
     return paneId;
@@ -84,7 +117,8 @@ export async function launchOmp(
     : directCommand;
 
   ctx.terminal.send(paneId, `${command}\n`);
-  ctx.ui.notify(`OMP started in a split pane with profile ${presetLabel}`, 'info');
+  schedulePresetSwitch(ctx, paneId, cwd, options.preset);
+  ctx.ui.notify(`OMP started in a split pane with preset ${presetLabel}`, 'info');
   return paneId;
 }
 
@@ -98,13 +132,11 @@ export async function launchOmpInActivePane(
     return false;
   }
 
-  const ompArgs = buildOmpArgs(preset);
-  const command = ['omp', ...ompArgs].map(quoteForShell).join(' ');
+  const cwd = ctx.terminal.activeCwd() || '';
+  const command = ['omp', ...buildOmpArgs(preset)].map(quoteForShell).join(' ');
   ctx.terminal.send(paneId, `${command}\n`);
-  ctx.ui.notify(
-    `Launching OMP with profile ${preset && !preset.isDefault ? preset.id : 'default'}`,
-    'info'
-  );
+  schedulePresetSwitch(ctx, paneId, cwd, preset);
+  ctx.ui.notify(`Launching OMP with preset ${preset?.id || DEFAULT_PRESET_ID}`, 'info');
   return true;
 }
 

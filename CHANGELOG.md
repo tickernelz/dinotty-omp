@@ -10,11 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Windowed transcript loading reads the newest session chunks through `omp-bridge` instead of the host's 512 KB file preview, while exact whole-file metrics remain sourced from the bridge.
+- Model preset discovery reads global OMP `modelPresets` and applies `/modelpreset switch <name>` after a launched session becomes ready.
 
 ### Changed
 
 - The HUD and status bar now share one visibility-aware, file-watch-driven pane session poller instead of running duplicate fixed-interval probes.
 - Mobile HUD defaults avoid the iOS top-right safe area, migrate unsafe stored positions once, add safe-area insets, and enlarge touch targets.
+- OMP launcher entries are model presets; OMP 18.4.5 has no `--modelpreset` launch flag, so the plugin starts OMP normally and sends the slash command after readiness.
 
 ### Fixed
 
